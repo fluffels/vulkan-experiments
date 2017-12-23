@@ -82,7 +82,6 @@ main (int argc, char** argv) {
         int a = 0;
         while ((a < availableLayerCount) && (!found)) {
             auto* availableLayerName = layerProperties[a].layerName;
-            LOG(DEBUG) << requestedLayerName << " <-> " << availableLayerName;
             if (strcmp(availableLayerName, requestedLayerName) == 0) {
                 found = true;
             }
