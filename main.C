@@ -6,6 +6,20 @@
 
 #include "easylogging++.h"
 
+const uint32_t requestedValidationLayerCount = 1;
+const char* requestedValidationLayers[requestedValidationLayerCount] = {
+        "VK_LAYER_LUNARG_standard_validation"
+};
+
+#ifdef NDEBUG
+bool enableValidationLayers = false;
+#else
+bool enableValidationLayers = true;
+#endif
+
+const int WINDOW_HEIGHT = 600;
+const int WINDOW_WIDTH = 800;
+
 INITIALIZE_EASYLOGGINGPP
 
 VkInstance instance;
@@ -23,7 +37,9 @@ main (int argc, char** argv) {
     }
 
     LOG(INFO) << "Creating window...";
-    auto window = glfwCreateWindow(640, 480, "Vulkan Experiments", nullptr, nullptr);
+    auto window = glfwCreateWindow(
+        WINDOW_WIDTH, WINDOW_HEIGHT, "Vulkan Experiments", nullptr, nullptr
+    );
     if (!window) {
         glfwTerminate();
         return 2;
@@ -55,10 +71,40 @@ main (int argc, char** argv) {
     createInfo.enabledExtensionCount = glfwExtensionCount;
     createInfo.ppEnabledExtensionNames = glfwExtensions;
 
-    createInfo.enabledLayerCount = 0;
+    /* NOTE(jan): Debug layers. */
+    uint32_t availableLayerCount;
+    vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
+    VkLayerProperties layerProperties[availableLayerCount];
+    vkEnumerateInstanceLayerProperties(&availableLayerCount, layerProperties);
+    for (int r = 0; r < requestedValidationLayerCount; r++) {
+        auto requestedLayerName = requestedValidationLayers[r];
+        bool found = false;
+        int a = 0;
+        while ((a < availableLayerCount) && (!found)) {
+            auto* availableLayerName = layerProperties[a].layerName;
+            LOG(DEBUG) << requestedLayerName << " <-> " << availableLayerName;
+            if (strcmp(availableLayerName, requestedLayerName) == 0) {
+                found = true;
+            }
+            a++;
+        }
+        if (!found) {
+            LOG(ERROR) << "Could not find layer '" << requestedLayerName << "'.";
+            LOG(WARNING) << "Disabling validation layers...";
+            enableValidationLayers = false;
+        }
+    }
+    if (enableValidationLayers) {
+        createInfo.enabledLayerCount = requestedValidationLayerCount;
+        createInfo.ppEnabledLayerNames = requestedValidationLayers;
+    } else {
+        createInfo.enabledLayerCount = 0;
+    }
 
     VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
-    if (result != VK_SUCCESS) {
+    if (result == VK_ERROR_LAYER_NOT_PRESENT) {
+        LOG(ERROR) << "Layer not present.";
+    } else if (result != VK_SUCCESS) {
         LOG(ERROR) << "Could not instantiate Vulkan.";
     } else {
         LOG(INFO) << "Entering main loop...";
