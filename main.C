@@ -1,10 +1,8 @@
-#define GLFW_INCLUDE_VULKAN
-#include <cstdlib>
-
+#include <GLFW/glfw3.h>
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <vulkan/vulkan.h>
 
 #include "easylogging++.h"
 
@@ -25,6 +23,9 @@ main (int argc, char** argv) {
         glfwTerminate();
         return 2;
     }
+
+    uint32_t extensionCount = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 
     LOG(INFO) << "Swap to window context...";
     glfwMakeContextCurrent(window);
