@@ -1,6 +1,7 @@
 #include <cstdlib>
 
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 
 #include "easylogging++.h"
 
@@ -30,6 +31,8 @@ main (int argc, char** argv) {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    glm::mat4 matrix;
 
     glfwTerminate();
     return 0;
