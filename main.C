@@ -1,5 +1,8 @@
+#define GLFW_INCLUDE_VULKAN
 #include <cstdlib>
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
