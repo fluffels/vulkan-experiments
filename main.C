@@ -32,8 +32,6 @@ main (int argc, char** argv) {
         glfwPollEvents();
     }
 
-    glm::mat4 matrix;
-
     glfwTerminate();
     return 0;
 }
