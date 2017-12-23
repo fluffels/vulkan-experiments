@@ -26,6 +26,7 @@ main (int argc, char** argv) {
 
     uint32_t extensionCount = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+    LOG(INFO) << "Found " << extensionCount << " extensions...";
 
     LOG(INFO) << "Swap to window context...";
     glfwMakeContextCurrent(window);
