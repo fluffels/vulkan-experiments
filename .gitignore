@@ -27,3 +27,17 @@
 *.exe
 *.out
 *.app
+
+# CMake Trash
+CMakeCache.txt
+CMakeFiles
+*.cmake
+
+# Vulkan Trash
+VulkanSDK
+
+# Compilation Products
+main
+
+# Execution Products
+logs
