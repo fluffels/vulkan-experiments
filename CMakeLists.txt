@@ -1,4 +1,5 @@
 cmake_minimum_required (VERSION 3.5)
+set (CMAKE_CXX_STANDARD 14)
 project (Vulkan)
 find_package(glfw3 REQUIRED)
 add_executable (main main.C)
