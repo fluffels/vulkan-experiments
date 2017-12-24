@@ -26,6 +26,19 @@ INITIALIZE_EASYLOGGINGPP
 
 VkInstance instance;
 
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+        VkDebugReportFlagsEXT flags,
+        VkDebugReportObjectTypeEXT objType,
+        uint64_t obj,
+        size_t location,
+        int32_t code,
+        const char* layerPrefix,
+        const char* msg,
+        void* userData) {
+    LOG(ERROR) << "validation layer: " << msg;
+    return VK_FALSE;
+}
+
 void on_key_event(
         GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE) {
@@ -119,6 +132,28 @@ main (int argc, char** argv) {
     createInfo.ppEnabledExtensionNames = requestedExtensions.data();
 
     VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
+
+    /* NOTE(jan): Debug callback. */
+    if (enableValidationLayers) {
+        VkDebugReportCallbackCreateInfoEXT debugReportCallbackCreateInfo = {};
+        debugReportCallbackCreateInfo.sType =
+                VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+        debugReportCallbackCreateInfo.flags =
+                VK_DEBUG_REPORT_ERROR_BIT_EXT |
+                VK_DEBUG_REPORT_WARNING_BIT_EXT;
+        debugReportCallbackCreateInfo.pfnCallback = debugCallback;
+        auto create = (PFN_vkCreateDebugReportCallbackEXT)
+                vkGetInstanceProcAddr(
+                        instance, "vkCreateDebugReportCallbackEXT");
+        VkDebugReportCallbackEXT callback;
+        if (create == nullptr) {
+            LOG(WARNING) << "Could not register debug callback";
+        } else {
+            create(instance, &debugReportCallbackCreateInfo, nullptr,
+                   &callback);
+        }
+    }
+
     if (result == VK_ERROR_LAYER_NOT_PRESENT) {
         LOG(ERROR) << "Layer not present.";
     } else if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
