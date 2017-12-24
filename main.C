@@ -38,7 +38,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         const char* layerPrefix,
         const char* msg,
         void* userData) {
-    LOG(ERROR) << "validation layer: " << msg;
+    if (flags == VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+        LOG(ERROR) << "[" << layerPrefix << "] " << msg;
+    } else if (flags == VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+        LOG(WARNING) << "[" << layerPrefix << "] " << msg;
+    } else {
+        LOG(DEBUG) << "[" << layerPrefix << "] " << msg;
+    }
     return VK_FALSE;
 }
 
