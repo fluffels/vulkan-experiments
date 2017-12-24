@@ -195,9 +195,23 @@ main (int argc, char** argv, char** envp) {
     } else {
         std::vector<VkPhysicalDevice> devices(deviceCount);
         vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+        int max_score = -1;
         for (const auto& device: devices) {
-            physicalDevice = device;
-            // TODO(jan): Check if this device is suitable.
+            int score = -1;
+            VkPhysicalDeviceProperties deviceProperties;
+            vkGetPhysicalDeviceProperties(device, &deviceProperties);
+            VkPhysicalDeviceFeatures deviceFeatures;
+            vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+            if (deviceFeatures.geometryShader) {
+                score = 0;
+                if (deviceProperties.deviceType ==
+                        VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+                    score += 100;
+                }
+            }
+            if (score > max_score) {
+                physicalDevice = device;
+            }
             break;
         }
     }
