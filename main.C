@@ -1,3 +1,5 @@
+#include <vector>
+
 #include <GLFW/glfw3.h>
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -71,13 +73,6 @@ main (int argc, char** argv) {
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
 
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(
-            &glfwExtensionCount
-    );
-    createInfo.enabledExtensionCount = glfwExtensionCount;
-    createInfo.ppEnabledExtensionNames = glfwExtensions;
-
     /* NOTE(jan): Debug layers. */
     uint32_t availableLayerCount;
     vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
@@ -107,9 +102,27 @@ main (int argc, char** argv) {
         createInfo.enabledLayerCount = 0;
     }
 
+    /* NOTE(jan): Extensions. */
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(
+            &glfwExtensionCount
+    );
+    std::vector<const char*> requestedExtensions;
+    for (uint32_t i = 0; i < glfwExtensionCount; i++) {
+        requestedExtensions.push_back(glfwExtensions[i]);
+    }
+    if (enableValidationLayers) {
+        requestedExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+    }
+    createInfo.enabledExtensionCount = static_cast<uint32_t>
+        (requestedExtensions.size());
+    createInfo.ppEnabledExtensionNames = requestedExtensions.data();
+
     VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
     if (result == VK_ERROR_LAYER_NOT_PRESENT) {
         LOG(ERROR) << "Layer not present.";
+    } else if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
+        LOG(ERROR) << "Extension not present.";
     } else if (result != VK_SUCCESS) {
         LOG(ERROR) << "Could not instantiate Vulkan.";
     } else {
