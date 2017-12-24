@@ -50,8 +50,19 @@ void on_key_event(
 }
 
 int
-main (int argc, char** argv) {
+main (int argc, char** argv, char** envp) {
     START_EASYLOGGINGPP(argc, argv);
+
+    while (*envp != 0) {
+        char* env = *envp;
+        if (strstr(env, "VULKAN") == env ||
+                strstr(env, "VK") == env ||
+                strstr(env, "LD_LIBRARY_PATH=") == env ||
+                strstr(env, "PATH") == env) {
+            LOG(DEBUG) << env;
+        }
+        envp++;
+    }
 
     LOG(INFO) << "Initalizing GLFW...";
     if (!glfwInit()) {
