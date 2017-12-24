@@ -186,6 +186,26 @@ main (int argc, char** argv, char** envp) {
         }
     }
 
+    /* NOTE(jan): Physical device selection. */
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    uint32_t deviceCount;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+    if (deviceCount == 0) {
+        LOG(ERROR) << "No Vulkan devices detected.";
+    } else {
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+        for (const auto& device: devices) {
+            physicalDevice = device;
+            // TODO(jan): Check if this device is suitable.
+            break;
+        }
+    }
+
+    if (physicalDevice == VK_NULL_HANDLE) {
+        LOG(ERROR) << "No suitable Vulkan devices detected.";
+    }
+
     if (instance) {
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
