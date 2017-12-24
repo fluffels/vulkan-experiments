@@ -153,6 +153,14 @@ main (int argc, char** argv, char** envp) {
 
     VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
 
+    if (result == VK_ERROR_LAYER_NOT_PRESENT) {
+        LOG(ERROR) << "Layer not present.";
+    } else if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
+        LOG(ERROR) << "Extension not present.";
+    } else if (result != VK_SUCCESS) {
+        LOG(ERROR) << "Could not instantiate Vulkan.";
+    }
+
     /* NOTE(jan): Debug callback. */
     if (enableValidationLayers) {
         VkDebugReportCallbackCreateInfoEXT cf = {};
@@ -178,13 +186,7 @@ main (int argc, char** argv, char** envp) {
         }
     }
 
-    if (result == VK_ERROR_LAYER_NOT_PRESENT) {
-        LOG(ERROR) << "Layer not present.";
-    } else if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
-        LOG(ERROR) << "Extension not present.";
-    } else if (result != VK_SUCCESS) {
-        LOG(ERROR) << "Could not instantiate Vulkan.";
-    } else {
+    if (instance) {
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
