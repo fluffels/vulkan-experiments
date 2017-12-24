@@ -24,6 +24,13 @@ INITIALIZE_EASYLOGGINGPP
 
 VkInstance instance;
 
+void on_key_event(
+        GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE) {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+}
+
 int
 main (int argc, char** argv) {
     START_EASYLOGGINGPP(argc, argv);
@@ -107,6 +114,7 @@ main (int argc, char** argv) {
         LOG(ERROR) << "Could not instantiate Vulkan.";
     } else {
         LOG(INFO) << "Entering main loop...";
+        glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
             glfwSwapBuffers(window);
             glfwPollEvents();
