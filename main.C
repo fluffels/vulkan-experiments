@@ -1,3 +1,4 @@
+#include <iostream>
 #include <vector>
 
 #include <GLFW/glfw3.h>
@@ -19,6 +20,8 @@ bool enableValidationLayers = false;
 bool enableValidationLayers = true;
 #endif
 
+VkDebugReportCallbackEXT callback_debug;
+
 const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH = 800;
 
@@ -35,6 +38,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         const char* layerPrefix,
         const char* msg,
         void* userData) {
+    std::cerr << "validation layer: " << msg << std::endl;
     LOG(ERROR) << "validation layer: " << msg;
     return VK_FALSE;
 }
@@ -135,22 +139,26 @@ main (int argc, char** argv) {
 
     /* NOTE(jan): Debug callback. */
     if (enableValidationLayers) {
-        VkDebugReportCallbackCreateInfoEXT debugReportCallbackCreateInfo = {};
-        debugReportCallbackCreateInfo.sType =
-                VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
-        debugReportCallbackCreateInfo.flags =
+        VkDebugReportCallbackCreateInfoEXT cf = {};
+        cf.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+        cf.flags =
                 VK_DEBUG_REPORT_ERROR_BIT_EXT |
-                VK_DEBUG_REPORT_WARNING_BIT_EXT;
-        debugReportCallbackCreateInfo.pfnCallback = debugCallback;
-        auto create = (PFN_vkCreateDebugReportCallbackEXT)
+                VK_DEBUG_REPORT_WARNING_BIT_EXT |
+                VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+        cf.pfnCallback = debugCallback;
+        auto create =
+                (PFN_vkCreateDebugReportCallbackEXT)
                 vkGetInstanceProcAddr(
-                        instance, "vkCreateDebugReportCallbackEXT");
-        VkDebugReportCallbackEXT callback;
+                        instance,
+                        "vkCreateDebugReportCallbackEXT"
+                );
         if (create == nullptr) {
-            LOG(WARNING) << "Could not register debug callback";
+            LOG(WARNING) << "Could load debug callback creation function";
         } else {
-            create(instance, &debugReportCallbackCreateInfo, nullptr,
-                   &callback);
+            VkResult r = create(instance, &cf, nullptr, &callback_debug);
+            if (r != VK_SUCCESS) {
+                LOG(WARNING) << "Could not create debug callback";
+            }
         }
     }
 
@@ -167,6 +175,16 @@ main (int argc, char** argv) {
             glfwSwapBuffers(window);
             glfwPollEvents();
         }
+    }
+
+    auto vkDestroyCallback =
+            (PFN_vkDestroyDebugReportCallbackEXT)
+            vkGetInstanceProcAddr(
+                    instance,
+                    "vkDestroyDebugReportCallbackEXT"
+            );
+    if (vkDestroyCallback != nullptr) {
+        vkDestroyCallback(instance, callback_debug, nullptr);
     }
 
     vkDestroyInstance(instance, nullptr);
