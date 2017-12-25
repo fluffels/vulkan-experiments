@@ -1,4 +1,5 @@
 #include <iostream>
+#include <set>
 #include <vector>
 
 #define GLFW_INCLUDE_VULKAN
@@ -23,6 +24,7 @@ bool enableValidationLayers = true;
 VkDebugReportCallbackEXT callback_debug;
 VkDevice device = VK_NULL_HANDLE;
 VkQueue graphicsQueue = VK_NULL_HANDLE;
+VkQueue presentationQueue = VK_NULL_HANDLE;
 VkSurfaceKHR surface = VK_NULL_HANDLE;
 
 const int WINDOW_HEIGHT = 600;
@@ -203,7 +205,8 @@ main (int argc, char** argv, char** envp) {
     uint32_t deviceCount;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
     uint32_t queueFamilyCount;
-    uint32_t graphicsQueueFamilyIndex;
+    int graphicsQueueFamilyIndex;
+    int presentationQueueFamilyIndex;
     if (deviceCount == 0) {
         LOG(ERROR) << "No Vulkan devices detected.";
     } else {
@@ -224,18 +227,32 @@ main (int argc, char** argv, char** envp) {
             vkGetPhysicalDeviceQueueFamilyProperties(
                     device, &queueFamilyCount, queueFamilies.data()
             );
-            graphicsQueueFamilyIndex = 0;
+            graphicsQueueFamilyIndex = -1;
+            presentationQueueFamilyIndex = -1;
+            int i = 0;
             for (const auto& queueFamily: queueFamilies) {
+                VkBool32 presentSupport = VK_FALSE;
+                vkGetPhysicalDeviceSurfaceSupportKHR(
+                        device, i, surface, &presentSupport
+                );
+                if ((queueFamily.queueCount) & presentSupport) {
+                    presentationQueueFamilyIndex = i;
+                }
                 if ((queueFamily.queueCount) &&
                         (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+                    graphicsQueueFamilyIndex = i;
+                }
+                if ((presentationQueueFamilyIndex >= 0) &&
+                        (graphicsQueueFamilyIndex >= 0))
+                {
                     score = 0;
                     if (deviceProperties.deviceType ==
-                        VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+                            VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
                         score += 100;
                     }
                     break;
                 }
-                graphicsQueueFamilyIndex++;
+                i++;
             }
             if (score > max_score) {
                 physicalDevice = device;
@@ -244,21 +261,30 @@ main (int argc, char** argv, char** envp) {
         }
     }
 
+    /* NOTE(jan): Logical device. */
     if (physicalDevice == VK_NULL_HANDLE) {
         LOG(ERROR) << "No suitable Vulkan devices detected.";
     } else {
-        /* NOTE(jan): Logical device. */
-        VkDeviceQueueCreateInfo queueCreateInfo = {};
-        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
-        queueCreateInfo.queueCount = 1;
-        float graphicsQueuePriority = 1.0f;
-        queueCreateInfo.pQueuePriorities = &graphicsQueuePriority;
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+        std::set<int> uniqueQueueFamilyIndices = {
+                graphicsQueueFamilyIndex,
+                presentationQueueFamilyIndex
+        };
+        float queuePriority = 1.0f;
+        for (int queueFamilyIndex: uniqueQueueFamilyIndices) {
+            VkDeviceQueueCreateInfo cf = {};
+            cf.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            cf.queueFamilyIndex = queueFamilyIndex;
+            cf.queueCount = 1;
+            cf.pQueuePriorities = &queuePriority;
+            queueCreateInfos.push_back(cf);
+        }
         VkPhysicalDeviceFeatures features = {};
         VkDeviceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pQueueCreateInfos = &queueCreateInfo;
-        createInfo.queueCreateInfoCount = 1;
+        createInfo.queueCreateInfoCount =
+                static_cast<uint32_t>(queueCreateInfos.size());
+        createInfo.pQueueCreateInfos = queueCreateInfos.data();
         createInfo.pEnabledFeatures = &features;
         createInfo.enabledExtensionCount = 0;
         if (enableValidationLayers) {
@@ -287,7 +313,14 @@ main (int argc, char** argv, char** envp) {
     }
 
     if (device != VK_NULL_HANDLE) {
-        vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
+        vkGetDeviceQueue(
+                device, graphicsQueueFamilyIndex, 0, &graphicsQueue
+        );
+        vkGetDeviceQueue(
+                device, presentationQueueFamilyIndex, 0, &presentationQueue
+        );
+        LOG(INFO) << "Graphics queue: " << graphicsQueue;
+        LOG(INFO) << "Presentation queue: " << presentationQueue;
     }
 
     if (graphicsQueue != VK_NULL_HANDLE) {
