@@ -1,11 +1,11 @@
 #include <iostream>
 #include <vector>
 
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
-#include <vulkan/vulkan.h>
 
 #include "easylogging++.h"
 
@@ -23,6 +23,7 @@ bool enableValidationLayers = true;
 VkDebugReportCallbackEXT callback_debug;
 VkDevice device = VK_NULL_HANDLE;
 VkQueue graphicsQueue = VK_NULL_HANDLE;
+VkSurfaceKHR surface = VK_NULL_HANDLE;
 
 const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH = 800;
@@ -188,6 +189,15 @@ main (int argc, char** argv, char** envp) {
         }
     }
 
+    /* NOTE(jan): Create surface. */
+    {
+        VkResult r;
+        r = glfwCreateWindowSurface(instance, window, nullptr, &surface);
+        if (r != VK_SUCCESS) {
+            LOG(ERROR) << "Could not create surface.";
+        }
+    }
+
     /* NOTE(jan): Physical device selection. */
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     uint32_t deviceCount;
@@ -300,6 +310,7 @@ main (int argc, char** argv, char** envp) {
     }
 
     vkDestroyDevice(device, nullptr);
+    vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
     glfwDestroyWindow(window);
     glfwTerminate();
