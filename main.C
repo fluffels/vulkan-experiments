@@ -22,6 +22,7 @@ bool enableValidationLayers = true;
 
 VkDebugReportCallbackEXT callback_debug;
 VkDevice device = VK_NULL_HANDLE;
+VkQueue graphicsQueue = VK_NULL_HANDLE;
 
 const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH = 800;
@@ -276,6 +277,10 @@ main (int argc, char** argv, char** envp) {
     }
 
     if (device != VK_NULL_HANDLE) {
+        vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
+    }
+
+    if (graphicsQueue != VK_NULL_HANDLE) {
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
