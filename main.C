@@ -254,6 +254,7 @@ main (int argc, char** argv, char** envp) {
                 }
                 i++;
             }
+            LOG(INFO) << "Device '" << device << "' scored at " << score;
             if (score > max_score) {
                 physicalDevice = device;
             }
