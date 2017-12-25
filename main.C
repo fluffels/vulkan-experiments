@@ -21,6 +21,7 @@ bool enableValidationLayers = true;
 #endif
 
 VkDebugReportCallbackEXT callback_debug;
+VkDevice device = VK_NULL_HANDLE;
 
 const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH = 800;
@@ -234,9 +235,47 @@ main (int argc, char** argv, char** envp) {
 
     if (physicalDevice == VK_NULL_HANDLE) {
         LOG(ERROR) << "No suitable Vulkan devices detected.";
+    } else {
+        /* NOTE(jan): Logical device. */
+        VkDeviceQueueCreateInfo queueCreateInfo = {};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
+        queueCreateInfo.queueCount = 1;
+        float graphicsQueuePriority = 1.0f;
+        queueCreateInfo.pQueuePriorities = &graphicsQueuePriority;
+        VkPhysicalDeviceFeatures features = {};
+        VkDeviceCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pQueueCreateInfos = &queueCreateInfo;
+        createInfo.queueCreateInfoCount = 1;
+        createInfo.pEnabledFeatures = &features;
+        createInfo.enabledExtensionCount = 0;
+        if (enableValidationLayers) {
+            createInfo.enabledLayerCount = requestedValidationLayerCount;
+            createInfo.ppEnabledLayerNames = requestedValidationLayers;
+        } else {
+            createInfo.enabledLayerCount = 0;
+        }
+        VkResult r;
+        r = vkCreateDevice(physicalDevice, &createInfo, nullptr, &device);
+        if (r == VK_ERROR_OUT_OF_HOST_MEMORY) {
+            LOG(ERROR) << "Out of host memory.";
+        } else if (r == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+            LOG(ERROR) << "Out of device memory.";
+        } else if (r == VK_ERROR_EXTENSION_NOT_PRESENT) {
+            LOG(ERROR) << "Extension not present.";
+        } else if (r == VK_ERROR_FEATURE_NOT_PRESENT) {
+            LOG(ERROR) << "Feature not present.";
+        } else if (r == VK_ERROR_TOO_MANY_OBJECTS) {
+            LOG(ERROR) << "Too many logical devices.";
+        } else if (r == VK_ERROR_DEVICE_LOST) {
+            LOG(ERROR) << "Device lost.";
+        } else if (r != VK_SUCCESS) {
+            LOG(ERROR) << "Could not create physical device: " << r;
+        }
     }
 
-    if (instance) {
+    if (device != VK_NULL_HANDLE) {
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
@@ -255,6 +294,7 @@ main (int argc, char** argv, char** envp) {
         vkDestroyCallback(instance, callback_debug, nullptr);
     }
 
+    vkDestroyDevice(device, nullptr);
     vkDestroyInstance(instance, nullptr);
     glfwDestroyWindow(window);
     glfwTerminate();
