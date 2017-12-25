@@ -190,6 +190,8 @@ main (int argc, char** argv, char** envp) {
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     uint32_t deviceCount;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+    uint32_t queueFamilyCount;
+    uint32_t graphicsQueueFamilyIndex;
     if (deviceCount == 0) {
         LOG(ERROR) << "No Vulkan devices detected.";
     } else {
@@ -202,12 +204,26 @@ main (int argc, char** argv, char** envp) {
             vkGetPhysicalDeviceProperties(device, &deviceProperties);
             VkPhysicalDeviceFeatures deviceFeatures;
             vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-            if (deviceFeatures.geometryShader) {
-                score = 0;
-                if (deviceProperties.deviceType ==
+
+            vkGetPhysicalDeviceQueueFamilyProperties(
+                    device, &queueFamilyCount, nullptr
+            );
+            std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+            vkGetPhysicalDeviceQueueFamilyProperties(
+                    device, &queueFamilyCount, queueFamilies.data()
+            );
+            graphicsQueueFamilyIndex = 0;
+            for (const auto& queueFamily: queueFamilies) {
+                if ((queueFamily.queueCount) &&
+                        (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+                    score = 0;
+                    if (deviceProperties.deviceType ==
                         VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-                    score += 100;
+                        score += 100;
+                    }
+                    break;
                 }
+                graphicsQueueFamilyIndex++;
             }
             if (score > max_score) {
                 physicalDevice = device;
