@@ -449,6 +449,7 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Swap chain length. */
         swapChain.length = swapChain.capabilities.minImageCount + 1;
+        /* NOTE(jan): maxImageCount == 0 means no limit. */
         if ((swapChain.capabilities.maxImageCount < swapChain.length) &&
                 (swapChain.capabilities.maxImageCount > 0)) {
             swapChain.length = swapChain.capabilities.maxImageCount;
