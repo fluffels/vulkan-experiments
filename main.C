@@ -18,6 +18,7 @@ struct SwapChain {
     VkPresentModeKHR presentMode;
     VkExtent2D extent;
     uint32_t length;
+    VkSwapchainKHR handle;
 };
 SwapChain swapChain;
 
@@ -456,6 +457,42 @@ main (int argc, char** argv, char** envp) {
         }
         LOG(INFO) << "Swap chain length set to " << swapChain.length;
 
+        /* NOTE(jan): Create swap chain. */
+        {
+            VkSwapchainCreateInfoKHR cf = {};
+            cf.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+            cf.surface = surface;
+            cf.minImageCount = swapChain.length;
+            cf.imageFormat = swapChain.format.format;
+            cf.imageColorSpace = swapChain.format.colorSpace;
+            cf.imageExtent = swapChain.extent;
+            cf.imageArrayLayers = 1;
+            cf.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            cf.preTransform = swapChain.capabilities.currentTransform;
+            cf.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+            cf.presentMode = swapChain.presentMode;
+            cf.clipped = VK_TRUE;
+            cf.oldSwapchain = VK_NULL_HANDLE;
+            uint32_t queueFamilyIndices[] = {
+                    static_cast<uint32_t>(graphicsQueueFamilyIndex),
+                    static_cast<uint32_t>(presentationQueueFamilyIndex)
+            };
+            if (graphicsQueueFamilyIndex != presentationQueueFamilyIndex) {
+                cf.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+                cf.queueFamilyIndexCount = 2;
+                cf.pQueueFamilyIndices = queueFamilyIndices;
+            } else {
+                cf.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                cf.queueFamilyIndexCount = 0;
+                cf.pQueueFamilyIndices = nullptr;
+            }
+            VkResult r;
+            r = vkCreateSwapchainKHR(device, &cf, nullptr, &swapChain.handle);
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Could not create swap chain: " << r;
+            }
+        }
+
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
@@ -474,6 +511,7 @@ main (int argc, char** argv, char** envp) {
         vkDestroyCallback(instance, callback_debug, nullptr);
     }
 
+    vkDestroySwapchainKHR(device, swapChain.handle, nullptr);
     vkDestroyDevice(device, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
