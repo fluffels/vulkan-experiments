@@ -15,6 +15,10 @@ const char* requestedValidationLayers[requestedValidationLayerCount] = {
         "VK_LAYER_LUNARG_standard_validation"
 };
 
+const std::vector<const char*> requiredDeviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
 #ifdef NDEBUG
 bool enableValidationLayers = false;
 #else
@@ -220,39 +224,57 @@ main (int argc, char** argv, char** envp) {
             VkPhysicalDeviceFeatures deviceFeatures;
             vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
-            vkGetPhysicalDeviceQueueFamilyProperties(
-                    device, &queueFamilyCount, nullptr
+            uint32_t extensionCount;
+            vkEnumerateDeviceExtensionProperties(
+                    device, nullptr, &extensionCount, nullptr
             );
-            std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-            vkGetPhysicalDeviceQueueFamilyProperties(
-                    device, &queueFamilyCount, queueFamilies.data()
+            std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+            vkEnumerateDeviceExtensionProperties(
+                    device, nullptr, &extensionCount, availableExtensions.data()
             );
-            graphicsQueueFamilyIndex = -1;
-            presentationQueueFamilyIndex = -1;
-            int i = 0;
-            for (const auto& queueFamily: queueFamilies) {
-                VkBool32 presentSupport = VK_FALSE;
-                vkGetPhysicalDeviceSurfaceSupportKHR(
-                        device, i, surface, &presentSupport
+            std::set<std::string> requiredExtensionSet(
+                    requiredDeviceExtensions.begin(),
+                    requiredDeviceExtensions.end()
+            );
+            for (const auto& extension: availableExtensions) {
+                requiredExtensionSet.erase(extension.extensionName);
+            }
+
+            if (requiredExtensionSet.empty()) {
+                vkGetPhysicalDeviceQueueFamilyProperties(
+                        device, &queueFamilyCount, nullptr
                 );
-                if ((queueFamily.queueCount) & presentSupport) {
-                    presentationQueueFamilyIndex = i;
-                }
-                if ((queueFamily.queueCount) &&
-                        (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-                    graphicsQueueFamilyIndex = i;
-                }
-                if ((presentationQueueFamilyIndex >= 0) &&
-                        (graphicsQueueFamilyIndex >= 0))
-                {
-                    score = 0;
-                    if (deviceProperties.deviceType ==
-                            VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-                        score += 100;
+                std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+                vkGetPhysicalDeviceQueueFamilyProperties(
+                        device, &queueFamilyCount, queueFamilies.data()
+                );
+                graphicsQueueFamilyIndex = -1;
+                presentationQueueFamilyIndex = -1;
+                int i = 0;
+                for (const auto& queueFamily: queueFamilies) {
+                    VkBool32 presentSupport = VK_FALSE;
+                    vkGetPhysicalDeviceSurfaceSupportKHR(
+                            device, i, surface, &presentSupport
+                    );
+                    if ((queueFamily.queueCount) & presentSupport) {
+                        presentationQueueFamilyIndex = i;
                     }
-                    break;
+                    if ((queueFamily.queueCount) &&
+                        (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+                        graphicsQueueFamilyIndex = i;
+                    }
+                    if ((presentationQueueFamilyIndex >= 0) &&
+                        (graphicsQueueFamilyIndex >= 0))
+                    {
+                        score = 0;
+                        if (deviceProperties.deviceType ==
+                            VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+                            score += 100;
+                        }
+                        break;
+                    }
+                    i++;
                 }
-                i++;
             }
             LOG(INFO) << "Device '" << device << "' scored at " << score;
             if (score > max_score) {
