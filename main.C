@@ -13,7 +13,9 @@
 struct SwapChain {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
+    VkSurfaceFormatKHR format;
     std::vector<VkPresentModeKHR> presentModes;
+    VkPresentModeKHR presentMode;
 };
 SwapChain swapChain;
 
@@ -316,6 +318,27 @@ main (int argc, char** argv, char** envp) {
                 physicalDevice = device;
             }
             break;
+        }
+    }
+
+    /* NOTE(jan): Pick a surface format. */
+    /* NOTE(jan): Default. */
+    swapChain.format = swapChain.formats[0];
+    if ((swapChain.formats.size() == 1) &&
+            (swapChain.formats[0].format == VK_FORMAT_UNDEFINED)) {
+        swapChain.format = {
+                VK_FORMAT_R8G8B8A8_UNORM,
+                VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
+        };
+        LOG(INFO) << "Surface has no preferred format. "
+                  << "Selecting 8 bit SRGB...";
+    } else {
+        for (const auto &format: swapChain.formats) {
+            if ((format.format == VK_FORMAT_R8G8B8A8_UNORM) &&
+                    (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)) {
+                swapChain.format = format;
+                LOG(INFO) << "Surface supports 8 bit SRGB. Selecting...";
+            }
         }
     }
 
