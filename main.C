@@ -322,66 +322,6 @@ main (int argc, char** argv, char** envp) {
         }
     }
 
-    /* NOTE(jan): Pick a surface format. */
-    /* NOTE(jan): Default. */
-    swapChain.format = swapChain.formats[0];
-    if ((swapChain.formats.size() == 1) &&
-            (swapChain.formats[0].format == VK_FORMAT_UNDEFINED)) {
-        swapChain.format = {
-                VK_FORMAT_R8G8B8A8_UNORM,
-                VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
-        };
-        LOG(INFO) << "Surface has no preferred format. "
-                  << "Selecting 8 bit SRGB...";
-    } else {
-        for (const auto &format: swapChain.formats) {
-            if ((format.format == VK_FORMAT_R8G8B8A8_UNORM) &&
-                    (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)) {
-                swapChain.format = format;
-                LOG(INFO) << "Surface supports 8 bit SRGB. Selecting...";
-            }
-        }
-    }
-
-    /* NOTE(jan): Pick a surface presentation mode. */
-    /* NOTE(jan): Default. Guaranteed to be present. */
-    swapChain.presentMode = VK_PRESENT_MODE_FIFO_KHR;
-    for (const auto& mode: swapChain.presentModes) {
-        /* NOTE(jan): This allows us to implement triple buffering. */
-        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-            swapChain.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-            LOG(INFO) << "Surface supports mailbox presentation mode. "
-                      << "Selecting...";
-        }
-    }
-
-    /* NOTE(jan): Pick a swap chain extent. */
-    if (swapChain.capabilities.currentExtent.width !=
-            std::numeric_limits<uint32_t>::max()) {
-        swapChain.extent = swapChain.capabilities.currentExtent;
-    } else {
-        VkExtent2D extent = {WINDOW_WIDTH, WINDOW_HEIGHT};
-        extent.width = std::max(
-                swapChain.capabilities.minImageExtent.width,
-                std::min(
-                        swapChain.capabilities.maxImageExtent.width,
-                        extent.width
-                )
-        );
-        extent.height = std::max(
-                swapChain.capabilities.minImageExtent.height,
-                std::min(
-                        swapChain.capabilities.maxImageExtent.height,
-                        extent.height
-                )
-        );
-        swapChain.extent = extent;
-    }
-    LOG(INFO) << "Swap chain extent set to "
-              << swapChain.extent.width
-              << "x"
-              << swapChain.extent.height;
-
     /* NOTE(jan): Logical device. */
     if (physicalDevice == VK_NULL_HANDLE) {
         LOG(ERROR) << "No suitable Vulkan devices detected.";
@@ -436,6 +376,7 @@ main (int argc, char** argv, char** envp) {
     }
 
     if (device != VK_NULL_HANDLE) {
+        /* NOTE(jan): Device queues. */
         vkGetDeviceQueue(
                 device, graphicsQueueFamilyIndex, 0, &graphicsQueue
         );
@@ -444,9 +385,67 @@ main (int argc, char** argv, char** envp) {
         );
         LOG(INFO) << "Graphics queue: " << graphicsQueue;
         LOG(INFO) << "Presentation queue: " << presentationQueue;
-    }
 
-    if (graphicsQueue != VK_NULL_HANDLE) {
+        /* NOTE(jan): Pick a surface format. */
+        /* NOTE(jan): Default. */
+        swapChain.format = swapChain.formats[0];
+        if ((swapChain.formats.size() == 1) &&
+            (swapChain.formats[0].format == VK_FORMAT_UNDEFINED)) {
+            swapChain.format = {
+                    VK_FORMAT_R8G8B8A8_UNORM,
+                    VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
+            };
+            LOG(INFO) << "Surface has no preferred format. "
+                      << "Selecting 8 bit SRGB...";
+        } else {
+            for (const auto &format: swapChain.formats) {
+                if ((format.format == VK_FORMAT_R8G8B8A8_UNORM) &&
+                    (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)) {
+                    swapChain.format = format;
+                    LOG(INFO) << "Surface supports 8 bit SRGB. Selecting...";
+                }
+            }
+        }
+
+        /* NOTE(jan): Pick a surface presentation mode. */
+        /* NOTE(jan): Default. Guaranteed to be present. */
+        swapChain.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+        for (const auto& mode: swapChain.presentModes) {
+            /* NOTE(jan): This allows us to implement triple buffering. */
+            if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                swapChain.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+                LOG(INFO) << "Surface supports mailbox presentation mode. "
+                          << "Selecting...";
+            }
+        }
+
+        /* NOTE(jan): Pick a swap chain extent. */
+        if (swapChain.capabilities.currentExtent.width !=
+            std::numeric_limits<uint32_t>::max()) {
+            swapChain.extent = swapChain.capabilities.currentExtent;
+        } else {
+            VkExtent2D extent = {WINDOW_WIDTH, WINDOW_HEIGHT};
+            extent.width = std::max(
+                    swapChain.capabilities.minImageExtent.width,
+                    std::min(
+                            swapChain.capabilities.maxImageExtent.width,
+                            extent.width
+                    )
+            );
+            extent.height = std::max(
+                    swapChain.capabilities.minImageExtent.height,
+                    std::min(
+                            swapChain.capabilities.maxImageExtent.height,
+                            extent.height
+                    )
+            );
+            swapChain.extent = extent;
+        }
+        LOG(INFO) << "Swap chain extent set to "
+                  << swapChain.extent.width
+                  << "x"
+                  << swapChain.extent.height;
+
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
