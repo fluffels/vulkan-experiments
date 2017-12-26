@@ -342,6 +342,18 @@ main (int argc, char** argv, char** envp) {
         }
     }
 
+    /* NOTE(jan): Pick a surface presentation mode. */
+    /* NOTE(jan): Default. Guaranteed to be present. */
+    swapChain.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    for (const auto& mode: swapChain.presentModes) {
+        /* NOTE(jan): This allows us to implement triple buffering. */
+        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+            swapChain.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+            LOG(INFO) << "Surface supports mailbox presentation mode. "
+                      << "Selecting...";
+        }
+    }
+
     /* NOTE(jan): Logical device. */
     if (physicalDevice == VK_NULL_HANDLE) {
         LOG(ERROR) << "No suitable Vulkan devices detected.";
