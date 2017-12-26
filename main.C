@@ -19,6 +19,7 @@ struct SwapChain {
     VkExtent2D extent;
     uint32_t length;
     VkSwapchainKHR handle;
+    std::vector<VkImage> images;
 };
 SwapChain swapChain;
 
@@ -491,6 +492,14 @@ main (int argc, char** argv, char** envp) {
             if (r != VK_SUCCESS) {
                 LOG(ERROR) << "Could not create swap chain: " << r;
             }
+            vkGetSwapchainImagesKHR(
+                    device, swapChain.handle, &swapChain.length, nullptr
+            );
+            swapChain.images.resize(swapChain.length);
+            vkGetSwapchainImagesKHR(
+                    device, swapChain.handle, &swapChain.length,
+                    swapChain.images.data()
+            );
         }
 
         LOG(INFO) << "Entering main loop...";
