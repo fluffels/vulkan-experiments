@@ -500,6 +500,9 @@ main (int argc, char** argv, char** envp) {
                     device, swapChain.handle, &swapChain.length,
                     swapChain.images.data()
             );
+            LOG(INFO) << "Retrieved "
+                      << swapChain.length
+                      << " swap chain images.";
         }
 
         LOG(INFO) << "Entering main loop...";
