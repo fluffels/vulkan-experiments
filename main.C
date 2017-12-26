@@ -10,6 +10,13 @@
 
 #include "easylogging++.h"
 
+struct SwapChain {
+    VkSurfaceCapabilitiesKHR capabilities;
+    std::vector<VkSurfaceFormatKHR> formats;
+    std::vector<VkPresentModeKHR> presentModes;
+};
+SwapChain swapChain;
+
 const uint32_t requestedValidationLayerCount = 1;
 const char* requestedValidationLayers[requestedValidationLayerCount] = {
         "VK_LAYER_LUNARG_standard_validation"
@@ -240,7 +247,35 @@ main (int argc, char** argv, char** envp) {
                 requiredExtensionSet.erase(extension.extensionName);
             }
 
-            if (requiredExtensionSet.empty()) {
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+                    device, surface, &swapChain.capabilities
+            );
+            uint32_t formatCount;
+            vkGetPhysicalDeviceSurfaceFormatsKHR(
+                    device, surface, &formatCount, nullptr
+            );
+            if (formatCount > 0) {
+                swapChain.formats.resize(formatCount);
+                vkGetPhysicalDeviceSurfaceFormatsKHR(
+                        device, surface, &formatCount,
+                        swapChain.formats.data()
+                );
+            }
+            uint32_t presentModeCount;
+            vkGetPhysicalDeviceSurfacePresentModesKHR(
+                    device, surface, &presentModeCount, nullptr
+            );
+            if (presentModeCount > 0) {
+                swapChain.presentModes.resize(presentModeCount);
+                vkGetPhysicalDeviceSurfacePresentModesKHR(
+                        device, surface, &presentModeCount,
+                        swapChain.presentModes.data()
+                );
+            }
+
+            if (requiredExtensionSet.empty() &&
+                    !swapChain.formats.empty() &&
+                    !swapChain.presentModes.empty()) {
                 vkGetPhysicalDeviceQueueFamilyProperties(
                         device, &queueFamilyCount, nullptr
                 );
