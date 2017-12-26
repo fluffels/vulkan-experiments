@@ -16,6 +16,7 @@ struct SwapChain {
     VkSurfaceFormatKHR format;
     std::vector<VkPresentModeKHR> presentModes;
     VkPresentModeKHR presentMode;
+    VkExtent2D extent;
 };
 SwapChain swapChain;
 
@@ -353,6 +354,33 @@ main (int argc, char** argv, char** envp) {
                       << "Selecting...";
         }
     }
+
+    /* NOTE(jan): Pick a swap chain extent. */
+    if (swapChain.capabilities.currentExtent.width !=
+            std::numeric_limits<uint32_t>::max()) {
+        swapChain.extent = swapChain.capabilities.currentExtent;
+    } else {
+        VkExtent2D extent = {WINDOW_WIDTH, WINDOW_HEIGHT};
+        extent.width = std::max(
+                swapChain.capabilities.minImageExtent.width,
+                std::min(
+                        swapChain.capabilities.maxImageExtent.width,
+                        extent.width
+                )
+        );
+        extent.height = std::max(
+                swapChain.capabilities.minImageExtent.height,
+                std::min(
+                        swapChain.capabilities.maxImageExtent.height,
+                        extent.height
+                )
+        );
+        swapChain.extent = extent;
+    }
+    LOG(INFO) << "Swap chain extent set to "
+              << swapChain.extent.width
+              << "x"
+              << swapChain.extent.height;
 
     /* NOTE(jan): Logical device. */
     if (physicalDevice == VK_NULL_HANDLE) {
