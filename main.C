@@ -17,6 +17,7 @@ struct SwapChain {
     std::vector<VkPresentModeKHR> presentModes;
     VkPresentModeKHR presentMode;
     VkExtent2D extent;
+    uint32_t length;
 };
 SwapChain swapChain;
 
@@ -445,6 +446,14 @@ main (int argc, char** argv, char** envp) {
                   << swapChain.extent.width
                   << "x"
                   << swapChain.extent.height;
+
+        /* NOTE(jan): Swap chain length. */
+        swapChain.length = swapChain.capabilities.minImageCount + 1;
+        if ((swapChain.capabilities.maxImageCount < swapChain.length) &&
+                (swapChain.capabilities.maxImageCount > 0)) {
+            swapChain.length = swapChain.capabilities.maxImageCount;
+        }
+        LOG(INFO) << "Swap chain length set to " << swapChain.length;
 
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
