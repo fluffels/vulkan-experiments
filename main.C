@@ -309,7 +309,9 @@ main (int argc, char** argv, char** envp) {
                 static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
         createInfo.pEnabledFeatures = &features;
-        createInfo.enabledExtensionCount = 0;
+        createInfo.enabledExtensionCount =
+                static_cast<uint32_t>(requiredDeviceExtensions.size());
+        createInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
         if (enableValidationLayers) {
             createInfo.enabledLayerCount = requestedValidationLayerCount;
             createInfo.ppEnabledLayerNames = requestedValidationLayers;
