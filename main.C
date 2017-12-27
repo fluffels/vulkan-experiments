@@ -734,4 +734,3 @@ main (int argc, char** argv, char** envp) {
     glfwTerminate();
     return 0;
 }
-
