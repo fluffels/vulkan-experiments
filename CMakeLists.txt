@@ -7,3 +7,15 @@ include_directories(${Vulkan_INCLUDE_DIRS})
 add_executable (main main.C)
 target_link_libraries (main glfw)
 target_link_libraries (main ${Vulkan_LIBRARIES})
+add_custom_target(
+        vert.spv
+        WORKING_DIRECTORY shaders/triangle/
+        COMMAND $ENV{VULKAN_SDK}/bin/glslangValidator -V shader.vert
+)
+add_dependencies(main vert.spv)
+add_custom_target(
+        frag.spv
+        WORKING_DIRECTORY shaders/triangle/
+        COMMAND $ENV{VULKAN_SDK}/bin/glslangValidator -V shader.frag
+)
+add_dependencies(main frag.spv)

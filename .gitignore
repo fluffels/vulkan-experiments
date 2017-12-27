@@ -36,6 +36,7 @@ Makefile
 
 # Vulkan Trash
 VulkanSDK
+*.spv
 
 # Compilation Products
 main
