@@ -550,6 +550,9 @@ main (int argc, char** argv, char** envp) {
         vkDestroyCallback(instance, callback_debug, nullptr);
     }
 
+    for (const auto& v: swapChain.imageViews) {
+        vkDestroyImageView(device, v, nullptr);
+    }
     vkDestroySwapchainKHR(device, swapChain.handle, nullptr);
     vkDestroyDevice(device, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
