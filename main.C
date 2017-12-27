@@ -20,6 +20,7 @@ struct SwapChain {
     uint32_t length;
     VkSwapchainKHR handle;
     std::vector<VkImage> images;
+    std::vector<VkImageView> imageViews;
 };
 SwapChain swapChain;
 
@@ -503,6 +504,32 @@ main (int argc, char** argv, char** envp) {
             LOG(INFO) << "Retrieved "
                       << swapChain.length
                       << " swap chain images.";
+
+            /* NOTE(jan): Swap chain image views. */
+            swapChain.imageViews.resize(swapChain.length);
+            for (int i = 0; i < swapChain.length; i++) {
+                VkImageViewCreateInfo cf = {};
+                cf.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                cf.image = swapChain.images[i];
+                cf.viewType = VK_IMAGE_VIEW_TYPE_2D;
+                cf.format = swapChain.format.format;
+                cf.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+                cf.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+                cf.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+                cf.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+                cf.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                cf.subresourceRange.baseMipLevel = 0;
+                cf.subresourceRange.levelCount = 1;
+                cf.subresourceRange.baseArrayLayer = 0;
+                cf.subresourceRange.layerCount = 1;
+                VkResult r;
+                r = vkCreateImageView(
+                        device, &cf, nullptr, &swapChain.imageViews[i]
+                );
+                if (r != VK_SUCCESS) {
+                    LOG(ERROR) << "Could not create image view #" << i;
+                }
+            }
         }
 
         LOG(INFO) << "Entering main loop...";
