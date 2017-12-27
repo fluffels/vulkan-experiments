@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include <set>
 #include <vector>
@@ -23,6 +24,12 @@ struct SwapChain {
     std::vector<VkImageView> imageViews;
 };
 SwapChain swapChain;
+
+struct Pipeline {
+    VkShaderModule vertModule;
+    VkShaderModule fragModule;
+};
+Pipeline pipeline = {};
 
 const uint32_t requestedValidationLayerCount = 1;
 const char* requestedValidationLayers[requestedValidationLayerCount] = {
@@ -76,6 +83,37 @@ void on_key_event(
     if (key == GLFW_KEY_ESCAPE) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
+}
+
+static std::vector<char>
+readFile(const std::string& path) {
+    std::ifstream file(path, std::ios::ate | std::ios::binary);
+    if (!file.is_open()) {
+        LOG(ERROR) << "Could not open " << path;
+    }
+    size_t size = (size_t)file.tellg();
+    std::vector<char> buffer(size);
+    file.seekg(0);
+    file.read(buffer.data(), size);
+    file.close();
+    return buffer;
+}
+
+VkShaderModule
+createShaderModule(const std::vector<char>& code) {
+    VkShaderModuleCreateInfo c = {};
+    c.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    c.codeSize = code.size();
+    c.pCode = reinterpret_cast<const uint32_t*>(code.data());
+    VkShaderModule module;
+    VkResult r;
+    r = vkCreateShaderModule(
+            device, &c, nullptr, &module
+    );
+    if (r != VK_SUCCESS) {
+        LOG(ERROR) << "Could not create shader module.";
+    }
+    return module;
 }
 
 int
@@ -531,6 +569,17 @@ main (int argc, char** argv, char** envp) {
                 }
             }
         }
+
+        /* NOTE(jan): Load shaders. */
+        {
+            auto code = readFile("shaders/triangle/vert.spv");
+            pipeline.vertModule = createShaderModule(code);
+            code = readFile("shaders/triangle/frag.spv");
+            pipeline.fragModule = createShaderModule(code);
+            vkDestroyShaderModule(device, pipeline.fragModule, nullptr);
+            vkDestroyShaderModule(device, pipeline.vertModule, nullptr);
+        }
+
 
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
