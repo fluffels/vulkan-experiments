@@ -1,6 +1,6 @@
 language:
   - cpp
 
-scrip:
+build:
   - cmake .
   - make
