@@ -571,7 +571,7 @@ main (int argc, char** argv, char** envp) {
             }
         }
 
-        /* NOTE(jan): Load shaders. */
+        /* NOTE(jan): Create pipeline. */
         {
             auto code = readFile("shaders/triangle/vert.spv");
             pipeline.vertModule = createShaderModule(code);
