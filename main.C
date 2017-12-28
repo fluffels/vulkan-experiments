@@ -901,6 +901,26 @@ main (int argc, char** argv, char** envp) {
                     imageAvailable, VK_NULL_HANDLE, &imageIndex
             );
 
+            VkSubmitInfo submitInfo = {};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            VkSemaphore waitSemaphores[] = {imageAvailable};
+            submitInfo.waitSemaphoreCount = 1;
+            submitInfo.pWaitSemaphores = waitSemaphores;
+            VkPipelineStageFlags waitStages[] =
+                    {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+            submitInfo.pWaitDstStageMask = waitStages;
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+            VkSemaphore signalSemaphores[] = {renderFinished};
+            submitInfo.signalSemaphoreCount = 1;
+            submitInfo.pSignalSemaphores = signalSemaphores;
+
+            VkResult r = vkQueueSubmit(
+                    graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE
+            );
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Could not submit to graphics queue: " << r;
+            }
         }
     }
 
