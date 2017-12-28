@@ -832,11 +832,39 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Start command buffer recording. */
         for (size_t i = 0; i < commandBuffers.size(); i++) {
-            VkCommandBufferBeginInfo s = {};
-            s.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            s.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-            s.pInheritanceInfo = nullptr;
-            vkBeginCommandBuffer(commandBuffers[i], &s);
+            VkCommandBufferBeginInfo cbbi = {};
+            cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            cbbi.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+            cbbi.pInheritanceInfo = nullptr;
+            vkBeginCommandBuffer(commandBuffers[i], &cbbi);
+            /* NOTE(jan): Set up render pass. */
+            VkRenderPassBeginInfo rpbi = {};
+            rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            rpbi.renderPass = pipeline.pass;
+            rpbi.framebuffer = swapChain.framebuffers[i];
+            rpbi.renderArea.offset = {0, 0};
+            rpbi.renderArea.extent = swapChain.extent;
+            VkClearValue clear = {1.0f, 0.0f, 0.0f, 1.0f};
+            rpbi.clearValueCount = 1;
+            rpbi.pClearValues = &clear;
+            vkCmdBeginRenderPass(
+                    commandBuffers[i], &rpbi, VK_SUBPASS_CONTENTS_INLINE
+            );
+            vkCmdBindPipeline(
+                    commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    pipeline.handle
+            );
+            vkCmdDraw(
+                    commandBuffers[i], 3, 1, 0, 0
+            );
+            vkCmdEndRenderPass(
+                    commandBuffers[i]
+            );
+            VkResult r = vkEndCommandBuffer(commandBuffers[i]);
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Failed to record command buffer #"
+                           << i << ": " << r;
+            }
         }
 
         LOG(INFO) << "Entering main loop...";
