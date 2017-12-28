@@ -22,6 +22,7 @@ struct SwapChain {
     VkSwapchainKHR handle;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
+    std::vector<VkFramebuffer> framebuffers;
 };
 SwapChain swapChain;
 
@@ -772,6 +773,29 @@ main (int argc, char** argv, char** envp) {
             vkDestroyShaderModule(device, pipeline.vertModule, nullptr);
         }
 
+        /* NOTE(jan): Framebuffer. */
+        {
+            swapChain.framebuffers.resize(swapChain.length);
+            for (size_t i = 0; i < swapChain.length; i++) {
+                VkImageView attachments[] = {
+                        swapChain.imageViews[i]
+                };
+                VkFramebufferCreateInfo cf = {};
+                cf.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                cf.renderPass = pipeline.pass;
+                cf.attachmentCount = 1;
+                cf.pAttachments = attachments;
+                cf.width = swapChain.extent.width;
+                cf.height = swapChain.extent.height;
+                cf.layers = 1;
+                VkResult r = vkCreateFramebuffer(
+                        device, &cf, nullptr, &swapChain.framebuffers[i]
+                );
+                if (r != VK_SUCCESS) {
+                    LOG(ERROR) << "Could not create framebuffer.";
+                }
+            }
+        }
 
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
@@ -790,7 +814,9 @@ main (int argc, char** argv, char** envp) {
     if (vkDestroyCallback != nullptr) {
         vkDestroyCallback(instance, callback_debug, nullptr);
     }
-
+    for (const auto& f: swapChain.framebuffers) {
+        vkDestroyFramebuffer(device, f, nullptr);
+    }
     vkDestroyPipeline(device, pipeline.handle, nullptr);
     vkDestroyPipelineLayout(device, pipeline.layout, nullptr);
     vkDestroyRenderPass(device, pipeline.pass, nullptr);
