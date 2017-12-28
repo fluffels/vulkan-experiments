@@ -4,7 +4,8 @@ dist: trusty
 addons:
   apt:
     packages:
-      xserver-xorg-dev
+      - xorg-dev
+      - xserver-xorg-dev
 
 language:
   - cpp
