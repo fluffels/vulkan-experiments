@@ -35,6 +35,8 @@ struct Pipeline {
 };
 Pipeline pipeline = {};
 
+VkCommandPool commandPool;
+
 const uint32_t requestedValidationLayerCount = 1;
 const char* requestedValidationLayers[requestedValidationLayerCount] = {
         "VK_LAYER_LUNARG_standard_validation"
@@ -797,6 +799,19 @@ main (int argc, char** argv, char** envp) {
             }
         }
 
+        {
+            VkCommandPoolCreateInfo cf = {};
+            cf.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            cf.queueFamilyIndex = graphicsQueueFamilyIndex;
+            cf.flags = 0;
+            VkResult r = vkCreateCommandPool(
+                    device, &cf, nullptr, &commandPool
+            );
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Could not create command pool.";
+            }
+        }
+
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
@@ -814,6 +829,7 @@ main (int argc, char** argv, char** envp) {
     if (vkDestroyCallback != nullptr) {
         vkDestroyCallback(instance, callback_debug, nullptr);
     }
+    vkDestroyCommandPool(device, commandPool, nullptr);
     for (const auto& f: swapChain.framebuffers) {
         vkDestroyFramebuffer(device, f, nullptr);
     }
