@@ -945,6 +945,7 @@ main (int argc, char** argv, char** envp) {
             presentInfo.pResults = nullptr;
 
             vkQueuePresentKHR(presentationQueue, &presentInfo);
+            vkQueueWaitIdle(presentationQueue);
         }
 
         vkDeviceWaitIdle(device);
