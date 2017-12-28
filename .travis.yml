@@ -4,6 +4,7 @@ dist: trusty
 addons:
   apt:
     packages:
+      - libglm-dev
       - xorg-dev
 
 language:
