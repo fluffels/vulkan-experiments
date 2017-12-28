@@ -602,12 +602,23 @@ main (int argc, char** argv, char** envp) {
             subpass.colorAttachmentCount = 1;
             subpass.pColorAttachments = &colorAttachmentRef;
 
+            VkSubpassDependency dep = {};
+            dep.srcSubpass = VK_SUBPASS_EXTERNAL;
+            dep.dstSubpass = 0;
+            dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dep.srcAccessMask = 0;
+            dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
             VkRenderPassCreateInfo cf = {};
             cf.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
             cf.attachmentCount = 1;
             cf.pAttachments = &colorAttachment;
             cf.subpassCount = 1;
             cf.pSubpasses = &subpass;
+            cf.dependencyCount = 1;
+            cf.pDependencies = &dep;
 
             VkResult r;
             r = vkCreateRenderPass(
@@ -914,7 +925,6 @@ main (int argc, char** argv, char** envp) {
             VkSemaphore signalSemaphores[] = {renderFinished};
             submitInfo.signalSemaphoreCount = 1;
             submitInfo.pSignalSemaphores = signalSemaphores;
-
             VkResult r = vkQueueSubmit(
                     graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE
             );
