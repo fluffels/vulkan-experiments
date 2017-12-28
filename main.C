@@ -892,7 +892,6 @@ main (int argc, char** argv, char** envp) {
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
-            glfwSwapBuffers(window);
             glfwPollEvents();
         }
     }
