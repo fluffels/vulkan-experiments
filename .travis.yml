@@ -4,7 +4,6 @@ dist: trusty
 addons:
   apt:
     packages:
-      - libvulkan-dev
       - xorg-dev
       - xserver-xorg-dev
 
@@ -18,6 +17,10 @@ install:
   - make -j4
   - sudo make install
   - cd ~/build/fluffels/vulkan-experiments
+  - wget https://vulkan.lunarg.com/sdk/home#sdk/downloadConfirm/1.0.65.0/linux/vulkansdk-linux-x86_64-1.0.65.0.run
+  - chmod +x vulkansdk-linux-x86_64-1.0.65.0.run
+  - ./vulkansdk-linux-x86_64-1.0.65.0.run
+  - source VulkanSDK/1.0.65.0/setup-env.sh
 
 script:
   - cmake .
