@@ -36,6 +36,7 @@ struct Pipeline {
 Pipeline pipeline = {};
 
 VkCommandPool commandPool;
+std::vector<VkCommandBuffer> commandBuffers;
 
 const uint32_t requestedValidationLayerCount = 1;
 const char* requestedValidationLayers[requestedValidationLayerCount] = {
@@ -799,6 +800,7 @@ main (int argc, char** argv, char** envp) {
             }
         }
 
+        /* NOTE(jan): Command pool creation. */
         {
             VkCommandPoolCreateInfo cf = {};
             cf.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -809,6 +811,22 @@ main (int argc, char** argv, char** envp) {
             );
             if (r != VK_SUCCESS) {
                 LOG(ERROR) << "Could not create command pool.";
+            }
+        }
+
+        /* NOTE(jan): Command buffer creation. */
+        {
+            commandBuffers.resize(swapChain.length);
+            VkCommandBufferAllocateInfo i = {};
+            i.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            i.commandPool = commandPool;
+            i.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            i.commandBufferCount = (uint32_t)commandBuffers.size();
+            VkResult r = vkAllocateCommandBuffers(
+                    device, &i, commandBuffers.data()
+            );
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Could not allocate command buffers: " << r;
             }
         }
 
