@@ -893,6 +893,14 @@ main (int argc, char** argv, char** envp) {
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
             glfwPollEvents();
+
+            uint32_t imageIndex;
+            vkAcquireNextImageKHR(
+                    device, swapChain.handle,
+                    std::numeric_limits<uint64_t>::max(),
+                    imageAvailable, VK_NULL_HANDLE, &imageIndex
+            );
+
         }
     }
 
