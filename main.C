@@ -830,6 +830,15 @@ main (int argc, char** argv, char** envp) {
             }
         }
 
+        /* NOTE(jan): Start command buffer recording. */
+        for (size_t i = 0; i < commandBuffers.size(); i++) {
+            VkCommandBufferBeginInfo s = {};
+            s.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            s.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+            s.pInheritanceInfo = nullptr;
+            vkBeginCommandBuffer(commandBuffers[i], &s);
+        }
+
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
