@@ -38,6 +38,9 @@ Pipeline pipeline = {};
 VkCommandPool commandPool;
 std::vector<VkCommandBuffer> commandBuffers;
 
+VkSemaphore imageAvailable;
+VkSemaphore renderFinished;
+
 const uint32_t requestedValidationLayerCount = 1;
 const char* requestedValidationLayers[requestedValidationLayerCount] = {
         "VK_LAYER_LUNARG_standard_validation"
@@ -830,7 +833,7 @@ main (int argc, char** argv, char** envp) {
             }
         }
 
-        /* NOTE(jan): Start command buffer recording. */
+        /* NOTE(jan): Command buffer recording. */
         for (size_t i = 0; i < commandBuffers.size(); i++) {
             VkCommandBufferBeginInfo cbbi = {};
             cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -867,6 +870,25 @@ main (int argc, char** argv, char** envp) {
             }
         }
 
+        /* NOTE(jan): Create semaphores. */
+        {
+            VkSemaphoreCreateInfo sci = {};
+            sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            VkResult result;
+            bool success;
+            result = vkCreateSemaphore(
+                    device, &sci, nullptr, &imageAvailable
+            );
+            success = result == VK_SUCCESS;
+            result = vkCreateSemaphore(
+                    device, &sci, nullptr, &renderFinished
+            );
+            success = success && (result == VK_SUCCESS);
+            if (!success) {
+                LOG(ERROR) << "Could not create semaphores.";
+            }
+        }
+
         LOG(INFO) << "Entering main loop...";
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
@@ -884,6 +906,8 @@ main (int argc, char** argv, char** envp) {
     if (vkDestroyCallback != nullptr) {
         vkDestroyCallback(instance, callback_debug, nullptr);
     }
+    vkDestroySemaphore(device, renderFinished, nullptr);
+    vkDestroySemaphore(device, imageAvailable, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
     for (const auto& f: swapChain.framebuffers) {
         vkDestroyFramebuffer(device, f, nullptr);
