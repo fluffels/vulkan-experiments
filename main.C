@@ -858,7 +858,7 @@ main (int argc, char** argv, char** envp) {
             rpbi.framebuffer = swapChain.framebuffers[i];
             rpbi.renderArea.offset = {0, 0};
             rpbi.renderArea.extent = swapChain.extent;
-            VkClearValue clear = {1.0f, 0.0f, 0.0f, 1.0f};
+            VkClearValue clear = {0.0f, 0.0f, 0.1f, 1.0f};
             rpbi.clearValueCount = 1;
             rpbi.pClearValues = &clear;
             vkCmdBeginRenderPass(
@@ -931,7 +931,23 @@ main (int argc, char** argv, char** envp) {
             if (r != VK_SUCCESS) {
                 LOG(ERROR) << "Could not submit to graphics queue: " << r;
             }
+
+            VkPresentInfoKHR presentInfo = {};
+            presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+            presentInfo.waitSemaphoreCount = 1;
+            presentInfo.pWaitSemaphores = signalSemaphores;
+
+            VkSwapchainKHR swapChains[] = {swapChain.handle};
+            presentInfo.swapchainCount = 1;
+            presentInfo.pSwapchains = swapChains;
+            presentInfo.pImageIndices = &imageIndex;
+            /* NOTE(jan): For returning VkResults for multiple swap chains. */
+            presentInfo.pResults = nullptr;
+
+            vkQueuePresentKHR(presentationQueue, &presentInfo);
         }
+
+        vkDeviceWaitIdle(device);
     }
 
     auto vkDestroyCallback =
