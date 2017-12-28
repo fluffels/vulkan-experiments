@@ -11,8 +11,12 @@ language:
   - cpp
 
 install:
-  - git clone https://github.com/glfw/glfw glfw && cd glfw && mkdir build && cd build && cmake .. && make -j4 && sudo make install
-  - cd && cd build/fluffels/vulkan-experiments
+  - git clone https://github.com/glfw/glfw glfw
+  - cd glfw
+  - cmake .
+  - make -j4
+  - sudo make install
+  - cd ~/build/fluffels/vulkan-experiments
 
 script:
   - cmake .
