@@ -5,7 +5,6 @@ addons:
   apt:
     packages:
       - xorg-dev
-      - xserver-xorg-dev
 
 language:
   - cpp
