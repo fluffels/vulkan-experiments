@@ -30,6 +30,7 @@ struct Pipeline {
     VkShaderModule fragModule;
     VkPipelineLayout layout;
     VkRenderPass pass;
+    VkPipeline handle;
 };
 Pipeline pipeline = {};
 
@@ -616,8 +617,6 @@ main (int argc, char** argv, char** envp) {
             pipeline.vertModule = createShaderModule(code);
             code = readFile("shaders/triangle/frag.spv");
             pipeline.fragModule = createShaderModule(code);
-            vkDestroyShaderModule(device, pipeline.fragModule, nullptr);
-            vkDestroyShaderModule(device, pipeline.vertModule, nullptr);
 
             VkPipelineShaderStageCreateInfo vertStageCreateInfo = {};
             vertStageCreateInfo.sType =
@@ -726,7 +725,7 @@ main (int argc, char** argv, char** envp) {
             colorBlending.blendConstants[3] = 0.0f;
 
             /* NOTE(jan): This is for uniform values. */
-            VkPipelineLayoutCreateInfo layoutCreateInfo;
+            VkPipelineLayoutCreateInfo layoutCreateInfo = {};
             layoutCreateInfo.sType =
                     VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
             layoutCreateInfo.setLayoutCount = 0;
@@ -740,6 +739,37 @@ main (int argc, char** argv, char** envp) {
             if (r != VK_SUCCESS) {
                 LOG(ERROR) << "Could not create pipeline layout.";
             }
+
+            VkGraphicsPipelineCreateInfo pipelineInfo = {};
+            pipelineInfo.sType =
+                    VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+            pipelineInfo.stageCount = 2;
+            pipelineInfo.pStages = stages;
+            pipelineInfo.pVertexInputState = &vertexInput;
+            pipelineInfo.pInputAssemblyState = &inputAssembly;
+            pipelineInfo.pViewportState = &viewportState;
+            pipelineInfo.pRasterizationState = &rasterizer;
+            pipelineInfo.pMultisampleState = &multisampling;
+            pipelineInfo.pDepthStencilState = nullptr;
+            pipelineInfo.pColorBlendState = &colorBlending;
+            pipelineInfo.pDynamicState = nullptr;
+            pipelineInfo.layout = pipeline.layout;
+            pipelineInfo.renderPass = pipeline.pass;
+            pipelineInfo.subpass = 0;
+            /* NOTE(jan): Used to derive pipelines. */
+            pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+            pipelineInfo.basePipelineIndex = -1;
+
+            r = vkCreateGraphicsPipelines(
+                    device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
+                    &pipeline.handle
+            );
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Could not create graphics pipeline: " << r;
+            }
+
+            vkDestroyShaderModule(device, pipeline.fragModule, nullptr);
+            vkDestroyShaderModule(device, pipeline.vertModule, nullptr);
         }
 
 
@@ -761,6 +791,7 @@ main (int argc, char** argv, char** envp) {
         vkDestroyCallback(instance, callback_debug, nullptr);
     }
 
+    vkDestroyPipeline(device, pipeline.handle, nullptr);
     vkDestroyPipelineLayout(device, pipeline.layout, nullptr);
     vkDestroyRenderPass(device, pipeline.pass, nullptr);
     for (const auto& v: swapChain.imageViews) {
