@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/fluffels/vulkan-experiments.svg?branch=master)](https://travis-ci.org/fluffels/vulkan-experiments)
+
 # vulkan-experiments
 Experimenting with the Vulkan graphics API.
 
