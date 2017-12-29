@@ -909,6 +909,11 @@ main (int argc, char** argv, char** envp) {
             } else {
                 vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
             }
+
+            void* data;
+            vkMapMemory(device, vertexBufferMemory, 0, bci.size, 0, &data);
+            memcpy(data, vertices.data(), (size_t)bci.size);
+            vkUnmapMemory(device, vertexBufferMemory);
         }
 
         /* NOTE(jan): Command buffer creation. */
