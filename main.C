@@ -17,7 +17,7 @@ struct Vertex {
 };
 
 const std::vector<Vertex> vertices = {
-        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
         {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
         {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
 };
@@ -956,8 +956,14 @@ main (int argc, char** argv, char** envp) {
                     commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
                     pipeline.handle
             );
+            VkBuffer vertexBuffers[] = {vertexBuffer};
+            VkDeviceSize offsets[] = {0};
+            vkCmdBindVertexBuffers(
+                    commandBuffers[i], 0, 1, vertexBuffers, offsets
+            );
             vkCmdDraw(
-                    commandBuffers[i], 3, 1, 0, 0
+                    commandBuffers[i], static_cast<uint32_t>(vertices.size()),
+                            1, 0, 0
             );
             vkCmdEndRenderPass(
                     commandBuffers[i]
