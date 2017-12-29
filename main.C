@@ -11,6 +11,17 @@
 
 #include "easylogging++.h"
 
+struct Vertex {
+    glm::vec2 pos;
+    glm::vec3 color;
+};
+
+const std::vector<Vertex> vertices = {
+        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+};
+
 struct SwapChain {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
@@ -658,13 +669,29 @@ main (int argc, char** argv, char** envp) {
                     fragStageCreateInfo
             };
 
-            VkPipelineVertexInputStateCreateInfo vertexInput = {};
-            vertexInput.sType =
+            VkVertexInputBindingDescription vibd = {};
+            vibd.binding = 0;
+            vibd.stride = sizeof(Vertex);
+            vibd.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+            VkVertexInputAttributeDescription viads[] = {{}, {}};
+            viads[0].binding = 0;
+            viads[0].location = 0;
+            viads[0].format = VK_FORMAT_R32G32_SFLOAT;
+            viads[0].offset = offsetof(Vertex, pos);
+
+            viads[1].binding = 0;
+            viads[1].location = 1;
+            viads[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+            viads[1].offset = offsetof(Vertex, color);
+
+            VkPipelineVertexInputStateCreateInfo visci = {};
+            visci.sType =
                     VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertexInput.vertexBindingDescriptionCount = 0;
-            vertexInput.pVertexBindingDescriptions = nullptr;
-            vertexInput.vertexAttributeDescriptionCount = 0;
-            vertexInput.pVertexAttributeDescriptions = nullptr;
+            visci.vertexBindingDescriptionCount = 1;
+            visci.pVertexBindingDescriptions = &vibd;
+            visci.vertexAttributeDescriptionCount = 2;
+            visci.pVertexAttributeDescriptions = viads;
 
             VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
             inputAssembly.sType =
@@ -763,7 +790,7 @@ main (int argc, char** argv, char** envp) {
                     VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
             pipelineInfo.stageCount = 2;
             pipelineInfo.pStages = stages;
-            pipelineInfo.pVertexInputState = &vertexInput;
+            pipelineInfo.pVertexInputState = &visci;
             pipelineInfo.pInputAssemblyState = &inputAssembly;
             pipelineInfo.pViewportState = &viewportState;
             pipelineInfo.pRasterizationState = &rasterizer;
