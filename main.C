@@ -870,6 +870,27 @@ main (int argc, char** argv, char** envp) {
             if (r != VK_SUCCESS) {
                 LOG(ERROR) << "Could not create vertex buffer: " << r;
             }
+
+            VkMemoryRequirements mr;
+            vkGetBufferMemoryRequirements(device, vertexBuffer, &mr);
+
+            VkPhysicalDeviceMemoryProperties pdmp;
+            vkGetPhysicalDeviceMemoryProperties(physicalDevice, &pdmp);
+
+            VkBool32 found = VK_FALSE;
+            auto typeFilter = mr.memoryTypeBits;
+            auto propertyFilter = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            for (uint32_t i = 0; i < pdmp.memoryTypeCount; i++) {
+                auto& type = pdmp.memoryTypes[i];
+                if ((typeFilter & (i << i)) &&
+                        (type.propertyFlags & propertyFilter)) {
+                    found = true;
+                    break;
+                }
+            }
+
+
         }
 
         /* NOTE(jan): Command buffer creation. */
