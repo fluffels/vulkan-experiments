@@ -22,6 +22,8 @@ const std::vector<Vertex> vertices = {
         {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
 };
 
+VkBuffer vertexBuffer;
+
 struct SwapChain {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
@@ -855,6 +857,21 @@ main (int argc, char** argv, char** envp) {
             }
         }
 
+        /* NOTE(jan): Vertex buffers. */
+        {
+            VkBufferCreateInfo bci = {};
+            bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bci.size = sizeof(vertices[0]) * vertices.size();
+            bci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            VkResult r = vkCreateBuffer(
+                    device, &bci, nullptr, &vertexBuffer
+            );
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Could not create vertex buffer: " << r;
+            }
+        }
+
         /* NOTE(jan): Command buffer creation. */
         {
             commandBuffers.resize(swapChain.length);
@@ -989,6 +1006,7 @@ main (int argc, char** argv, char** envp) {
     }
     vkDestroySemaphore(device, renderFinished, nullptr);
     vkDestroySemaphore(device, imageAvailable, nullptr);
+    vkDestroyBuffer(device, vertexBuffer, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
     for (const auto& f: swapChain.framebuffers) {
         vkDestroyFramebuffer(device, f, nullptr);
