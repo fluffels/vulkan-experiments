@@ -23,6 +23,7 @@ const std::vector<Vertex> vertices = {
 };
 
 VkBuffer vertexBuffer;
+VkDeviceMemory vertexBufferMemory;
 
 struct SwapChain {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -878,6 +879,7 @@ main (int argc, char** argv, char** envp) {
             vkGetPhysicalDeviceMemoryProperties(physicalDevice, &pdmp);
 
             VkBool32 found = VK_FALSE;
+            uint32_t memory_type = 0;
             auto typeFilter = mr.memoryTypeBits;
             auto propertyFilter = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
@@ -886,11 +888,27 @@ main (int argc, char** argv, char** envp) {
                 if ((typeFilter & (i << i)) &&
                         (type.propertyFlags & propertyFilter)) {
                     found = true;
+                    memory_type = i;
                     break;
                 }
             }
 
+            if (!found) {
+                LOG(ERROR) << "Could not find suitable memory for vertex "
+                        "buffer";
+            }
 
+            VkMemoryAllocateInfo mai = {};
+            mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            mai.allocationSize = mr.size;
+            mai.memoryTypeIndex = memory_type;
+
+            r = vkAllocateMemory(device, &mai, nullptr, &vertexBufferMemory);
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Could not allocate vertex buffer memory: " << r;
+            } else {
+                vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+            }
         }
 
         /* NOTE(jan): Command buffer creation. */
@@ -1027,6 +1045,7 @@ main (int argc, char** argv, char** envp) {
     }
     vkDestroySemaphore(device, renderFinished, nullptr);
     vkDestroySemaphore(device, imageAvailable, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
     vkDestroyBuffer(device, vertexBuffer, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
     for (const auto& f: swapChain.framebuffers) {
