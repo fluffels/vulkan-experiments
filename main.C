@@ -203,7 +203,7 @@ create_buffer(
         }
     }
     if (!found) {
-        LOG(ERROR) << "Could not find suitable memory for vertex "
+        LOG(ERROR) << "Could not find suitable memory for "
                    << "buffer";
     }
 
@@ -213,7 +213,7 @@ create_buffer(
     mai.memoryTypeIndex = memory_type;
     r = vkAllocateMemory(vk.device, &mai, nullptr, &buffer.m);
     if (r != VK_SUCCESS) {
-        LOG(ERROR) << "Could not allocate vertex buffer memory: " << r;
+        LOG(ERROR) << "Could not allocate buffer memory: " << r;
     } else {
         vkBindBufferMemory(vk.device, buffer.b, buffer.m, 0);
     }
