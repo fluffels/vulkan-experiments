@@ -219,7 +219,7 @@ buffer_create(VK& vk,
 }
 
 Buffer
-buffer_initialize(
+buffer_create_and_initialize(
         VK &vk,
         VkBufferUsageFlags usage,
         VkDeviceSize size,
