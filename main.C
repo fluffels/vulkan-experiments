@@ -1012,60 +1012,11 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Vertex buffers. */
         {
-            VkBufferCreateInfo bci = {};
-            bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            bci.size = sizeof(vertices[0]) * vertices.size();
-            bci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-            bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            VkResult r = vkCreateBuffer(
-                    device, &bci, nullptr, &scene.vertices.b
+            VkDeviceSize size = vector_size(vertices);
+            scene.vertices = buffer_create_and_initialize(
+                    vk, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size,
+                    (void *) vertices.data()
             );
-            if (r != VK_SUCCESS) {
-                LOG(ERROR) << "Could not create vertex buffer: " << r;
-            }
-
-            VkMemoryRequirements mr;
-            vkGetBufferMemoryRequirements(device, scene.vertices.b, &mr);
-
-            VkPhysicalDeviceMemoryProperties pdmp;
-            vkGetPhysicalDeviceMemoryProperties(physicalDevice, &pdmp);
-
-            VkBool32 found = VK_FALSE;
-            uint32_t memory_type = 0;
-            auto typeFilter = mr.memoryTypeBits;
-            auto propertyFilter = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-            for (uint32_t i = 0; i < pdmp.memoryTypeCount; i++) {
-                auto& type = pdmp.memoryTypes[i];
-                if ((typeFilter & (i << i)) &&
-                        (type.propertyFlags & propertyFilter)) {
-                    found = true;
-                    memory_type = i;
-                    break;
-                }
-            }
-
-            if (!found) {
-                LOG(ERROR) << "Could not find suitable memory for vertex "
-                        "buffer";
-            }
-
-            VkMemoryAllocateInfo mai = {};
-            mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            mai.allocationSize = mr.size;
-            mai.memoryTypeIndex = memory_type;
-
-            r = vkAllocateMemory(device, &mai, nullptr, &scene.vertices.m);
-            if (r != VK_SUCCESS) {
-                LOG(ERROR) << "Could not allocate vertex buffer memory: " << r;
-            } else {
-                vkBindBufferMemory(device, scene.vertices.b, scene.vertices.m, 0);
-            }
-
-            void* data;
-            vkMapMemory(device, scene.vertices.m, 0, bci.size, 0, &data);
-            memcpy(data, vertices.data(), (size_t)bci.size);
-            vkUnmapMemory(device, scene.vertices.m);
         }
 
         /* NOTE(jan): Index buffer. */
