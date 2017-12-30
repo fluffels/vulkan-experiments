@@ -225,10 +225,12 @@ buffer_initialize(
         VkDeviceSize size,
         void *contents) {
     auto buffer = buffer_create(vk, usage, size);
+
     void* data;
     vkMapMemory(vk.device, buffer.m, 0, size, 0, &data);
     memcpy(data, contents, (size_t)size);
     vkUnmapMemory(vk.device, buffer.m);
+
     return buffer;
 }
 
