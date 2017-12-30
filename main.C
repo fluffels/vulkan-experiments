@@ -164,11 +164,9 @@ createShaderModule(const std::vector<char>& code) {
 }
 
 Buffer
-create_buffer(
-        VK& vk,
-        VkBufferUsageFlags usage,
-        VkDeviceSize size,
-        void* contents) {
+buffer_create(VK& vk,
+              VkBufferUsageFlags usage,
+              VkDeviceSize size) {
     Buffer buffer = {};
 
     VkBufferCreateInfo bci = {};
@@ -177,7 +175,7 @@ create_buffer(
     bci.usage = usage;
     bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     VkResult r = vkCreateBuffer(
-        vk.device, &bci, nullptr, &buffer.b
+            vk.device, &bci, nullptr, &buffer.b
     );
     if (r != VK_SUCCESS) {
         LOG(ERROR) << "Could not create buffer: " << r;
@@ -196,15 +194,14 @@ create_buffer(
     for (uint32_t i = 0; i < pdmp.memoryTypeCount; i++) {
         auto& type = pdmp.memoryTypes[i];
         if ((typeFilter & (i << i)) &&
-                (type.propertyFlags & propertyFilter)) {
+            (type.propertyFlags & propertyFilter)) {
             found = true;
             memory_type = i;
             break;
         }
     }
     if (!found) {
-        LOG(ERROR) << "Could not find suitable memory for "
-                   << "buffer";
+        LOG(ERROR) << "Suitable buffer memory not found: " << r;
     }
 
     VkMemoryAllocateInfo mai = {};
@@ -218,11 +215,20 @@ create_buffer(
         vkBindBufferMemory(vk.device, buffer.b, buffer.m, 0);
     }
 
-    void* data;
-    vkMapMemory(vk.device, buffer.m, 0, bci.size, 0, &data);
-    memcpy(data, contents, (size_t)bci.size);
-    vkUnmapMemory(vk.device, buffer.m);
+    return buffer;
+}
 
+Buffer
+buffer_initialize(
+        VK &vk,
+        VkBufferUsageFlags usage,
+        VkDeviceSize size,
+        void *contents) {
+    auto buffer = buffer_create(vk, usage, size);
+    void* data;
+    vkMapMemory(vk.device, buffer.m, 0, size, 0, &data);
+    memcpy(data, contents, (size_t)size);
+    vkUnmapMemory(vk.device, buffer.m);
     return buffer;
 }
 
@@ -1011,9 +1017,9 @@ main (int argc, char** argv, char** envp) {
         /* NOTE(jan): Index buffer. */
         {
             VkDeviceSize size = vector_size(indices);
-            scene.indices = create_buffer(
-                vk, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size,
-                (void*)indices.data()
+            scene.indices = buffer_initialize(
+                    vk, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size,
+                    (void *) indices.data()
             );
         }
 
