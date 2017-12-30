@@ -16,11 +16,37 @@ struct Vertex {
     glm::vec3 color;
 };
 
-const std::vector<Vertex> vertices = {
-        {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+struct VK {
+    VkDevice device;
+    VkPhysicalDevice physical_device;
 };
+
+struct Buffer {
+    VkBuffer b;
+    VkDeviceMemory m;
+};
+
+struct Scene {
+    Buffer indices;
+    Buffer vertices;
+};
+
+const std::vector<Vertex> vertices = {
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}}
+};
+
+const std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0
+};
+
+template<class T> size_t
+vector_size(const std::vector<T>& v) {
+    size_t result = sizeof(v[0]) * v.size();
+    return result;
+}
 
 VkBuffer vertexBuffer;
 VkDeviceMemory vertexBufferMemory;
@@ -140,9 +166,75 @@ createShaderModule(const std::vector<char>& code) {
     return module;
 }
 
+Buffer
+create_buffer(
+        VK& vk,
+        VkBufferUsageFlags usage,
+        VkDeviceSize size,
+        void* contents) {
+    Buffer buffer = {};
+
+    VkBufferCreateInfo bci = {};
+    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size = size;
+    bci.usage = usage;
+    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VkResult r = vkCreateBuffer(
+        vk.device, &bci, nullptr, &buffer.b
+    );
+    if (r != VK_SUCCESS) {
+        LOG(ERROR) << "Could not create buffer: " << r;
+    }
+
+    VkMemoryRequirements mr;
+    vkGetBufferMemoryRequirements(vk.device, buffer.b, &mr);
+    VkPhysicalDeviceMemoryProperties pdmp;
+    vkGetPhysicalDeviceMemoryProperties(vk.physical_device, &pdmp);
+
+    VkBool32 found = VK_FALSE;
+    uint32_t memory_type = 0;
+    auto typeFilter = mr.memoryTypeBits;
+    auto propertyFilter = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    for (uint32_t i = 0; i < pdmp.memoryTypeCount; i++) {
+        auto& type = pdmp.memoryTypes[i];
+        if ((typeFilter & (i << i)) &&
+                (type.propertyFlags & propertyFilter)) {
+            found = true;
+            memory_type = i;
+            break;
+        }
+    }
+    if (!found) {
+        LOG(ERROR) << "Could not find suitable memory for vertex "
+                   << "buffer";
+    }
+
+    VkMemoryAllocateInfo mai = {};
+    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    mai.allocationSize = mr.size;
+    mai.memoryTypeIndex = memory_type;
+    r = vkAllocateMemory(vk.device, &mai, nullptr, &buffer.m);
+    if (r != VK_SUCCESS) {
+        LOG(ERROR) << "Could not allocate vertex buffer memory: " << r;
+    } else {
+        vkBindBufferMemory(vk.device, buffer.b, buffer.m, 0);
+    }
+
+    void* data;
+    vkMapMemory(vk.device, buffer.m, 0, bci.size, 0, &data);
+    memcpy(data, contents, (size_t)bci.size);
+    vkUnmapMemory(vk.device, buffer.m);
+
+    return buffer;
+}
+
 int
 main (int argc, char** argv, char** envp) {
     START_EASYLOGGINGPP(argc, argv);
+
+    VK vk;
+    Scene scene;
 
     while (*envp != 0) {
         char* env = *envp;
@@ -383,6 +475,7 @@ main (int argc, char** argv, char** envp) {
             LOG(INFO) << "Device '" << device << "' scored at " << score;
             if (score > max_score) {
                 physicalDevice = device;
+                vk.physical_device = device;
             }
             break;
         }
@@ -438,6 +531,8 @@ main (int argc, char** argv, char** envp) {
             LOG(ERROR) << "Device lost.";
         } else if (r != VK_SUCCESS) {
             LOG(ERROR) << "Could not create physical device: " << r;
+        } else {
+            vk.device = device;
         }
     }
 
@@ -916,6 +1011,15 @@ main (int argc, char** argv, char** envp) {
             vkUnmapMemory(device, vertexBufferMemory);
         }
 
+        /* NOTE(jan): Index buffer. */
+        {
+            VkDeviceSize size = vector_size(indices);
+            scene.indices = create_buffer(
+                vk, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size,
+                (void*)indices.data()
+            );
+        }
+
         /* NOTE(jan): Command buffer creation. */
         {
             commandBuffers.resize(swapChain.length);
@@ -961,9 +1065,12 @@ main (int argc, char** argv, char** envp) {
             vkCmdBindVertexBuffers(
                     commandBuffers[i], 0, 1, vertexBuffers, offsets
             );
-            vkCmdDraw(
-                    commandBuffers[i], static_cast<uint32_t>(vertices.size()),
-                            1, 0, 0
+            vkCmdBindIndexBuffer(
+                    commandBuffers[i], scene.indices.b, 0, VK_INDEX_TYPE_UINT16
+            );
+            vkCmdDrawIndexed(
+                commandBuffers[i], static_cast<uint32_t>(indices.size()),
+                1, 0, 0, 0
             );
             vkCmdEndRenderPass(
                     commandBuffers[i]
@@ -1056,6 +1163,8 @@ main (int argc, char** argv, char** envp) {
     }
     vkDestroySemaphore(device, renderFinished, nullptr);
     vkDestroySemaphore(device, imageAvailable, nullptr);
+    vkFreeMemory(vk.device, scene.indices.m, nullptr);
+    vkDestroyBuffer(vk.device, scene.indices.b, nullptr);
     vkFreeMemory(device, vertexBufferMemory, nullptr);
     vkDestroyBuffer(device, vertexBuffer, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
