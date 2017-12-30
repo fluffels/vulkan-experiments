@@ -48,9 +48,6 @@ vector_size(const std::vector<T>& v) {
     return result;
 }
 
-VkBuffer vertexBuffer;
-VkDeviceMemory vertexBufferMemory;
-
 struct SwapChain {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
@@ -961,14 +958,14 @@ main (int argc, char** argv, char** envp) {
             bci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
             bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
             VkResult r = vkCreateBuffer(
-                    device, &bci, nullptr, &vertexBuffer
+                    device, &bci, nullptr, &scene.vertices.b
             );
             if (r != VK_SUCCESS) {
                 LOG(ERROR) << "Could not create vertex buffer: " << r;
             }
 
             VkMemoryRequirements mr;
-            vkGetBufferMemoryRequirements(device, vertexBuffer, &mr);
+            vkGetBufferMemoryRequirements(device, scene.vertices.b, &mr);
 
             VkPhysicalDeviceMemoryProperties pdmp;
             vkGetPhysicalDeviceMemoryProperties(physicalDevice, &pdmp);
@@ -998,17 +995,17 @@ main (int argc, char** argv, char** envp) {
             mai.allocationSize = mr.size;
             mai.memoryTypeIndex = memory_type;
 
-            r = vkAllocateMemory(device, &mai, nullptr, &vertexBufferMemory);
+            r = vkAllocateMemory(device, &mai, nullptr, &scene.vertices.m);
             if (r != VK_SUCCESS) {
                 LOG(ERROR) << "Could not allocate vertex buffer memory: " << r;
             } else {
-                vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+                vkBindBufferMemory(device, scene.vertices.b, scene.vertices.m, 0);
             }
 
             void* data;
-            vkMapMemory(device, vertexBufferMemory, 0, bci.size, 0, &data);
+            vkMapMemory(device, scene.vertices.m, 0, bci.size, 0, &data);
             memcpy(data, vertices.data(), (size_t)bci.size);
-            vkUnmapMemory(device, vertexBufferMemory);
+            vkUnmapMemory(device, scene.vertices.m);
         }
 
         /* NOTE(jan): Index buffer. */
@@ -1060,10 +1057,10 @@ main (int argc, char** argv, char** envp) {
                     commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
                     pipeline.handle
             );
-            VkBuffer vertexBuffers[] = {vertexBuffer};
+            VkBuffer vertex_buffers[] = {scene.vertices.b};
             VkDeviceSize offsets[] = {0};
             vkCmdBindVertexBuffers(
-                    commandBuffers[i], 0, 1, vertexBuffers, offsets
+                    commandBuffers[i], 0, 1, vertex_buffers, offsets
             );
             vkCmdBindIndexBuffer(
                     commandBuffers[i], scene.indices.b, 0, VK_INDEX_TYPE_UINT16
@@ -1165,8 +1162,8 @@ main (int argc, char** argv, char** envp) {
     vkDestroySemaphore(device, imageAvailable, nullptr);
     vkFreeMemory(vk.device, scene.indices.m, nullptr);
     vkDestroyBuffer(vk.device, scene.indices.b, nullptr);
-    vkFreeMemory(device, vertexBufferMemory, nullptr);
-    vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, scene.vertices.m, nullptr);
+    vkDestroyBuffer(device, scene.vertices.b, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
     for (const auto& f: swapChain.framebuffers) {
         vkDestroyFramebuffer(device, f, nullptr);
