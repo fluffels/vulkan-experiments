@@ -166,6 +166,7 @@ createShaderModule(const std::vector<char>& code) {
 Buffer
 buffer_create(VK& vk,
               VkBufferUsageFlags usage,
+              VkMemoryPropertyFlags required_memory_properties,
               VkDeviceSize size) {
     Buffer buffer = {};
 
@@ -189,12 +190,11 @@ buffer_create(VK& vk,
     VkBool32 found = VK_FALSE;
     uint32_t memory_type = 0;
     auto typeFilter = mr.memoryTypeBits;
-    auto propertyFilter = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     for (uint32_t i = 0; i < pdmp.memoryTypeCount; i++) {
         auto& type = pdmp.memoryTypes[i];
-        if ((typeFilter & (i << i)) &&
-            (type.propertyFlags & propertyFilter)) {
+        auto check_type = typeFilter & (i << i);
+        auto check_flags = type.propertyFlags & required_memory_properties;
+        if (check_type && check_flags) {
             found = true;
             memory_type = i;
             break;
@@ -224,12 +224,64 @@ buffer_create_and_initialize(
         VkBufferUsageFlags usage,
         VkDeviceSize size,
         void *contents) {
-    auto buffer = buffer_create(vk, usage, size);
+    auto staging = buffer_create(
+            vk,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            size
+    );
 
     void* data;
-    vkMapMemory(vk.device, buffer.m, 0, size, 0, &data);
+    vkMapMemory(vk.device, staging.m, 0, size, 0, &data);
     memcpy(data, contents, (size_t)size);
-    vkUnmapMemory(vk.device, buffer.m);
+    vkUnmapMemory(vk.device, staging.m);
+
+    auto buffer = buffer_create(
+            vk,
+            usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            size
+    );
+
+    /* TODO(jan): Create a separate command pool for short lived buffers and
+     * set VK_COMMAND_POOL_CREATE_TRANSIENT_BIT so the implementation can
+     * optimize this. */
+    VkCommandBufferAllocateInfo cbai = {};
+    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cbai.commandPool = commandPool;
+    cbai.commandBufferCount = 1;
+
+    VkCommandBuffer cb;
+    vkAllocateCommandBuffers(vk.device, &cbai, &cb);
+
+    VkCommandBufferBeginInfo cbbi = {};
+    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(cb, &cbbi);
+
+    VkBufferCopy bc = {};
+    bc.dstOffset = 0;
+    bc.srcOffset = 0;
+    bc.size = size;
+    vkCmdCopyBuffer(cb, staging.b, buffer.b, 1, &bc);
+
+    vkEndCommandBuffer(cb);
+
+    VkSubmitInfo si = {};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cb;
+
+    vkQueueSubmit(graphicsQueue, 1, &si, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphicsQueue);
+
+    vkFreeCommandBuffers(vk.device, commandPool, 1, &cb);
+
+    vkDestroyBuffer(vk.device, staging.b, nullptr);
+    vkFreeMemory(vk.device, staging.m, nullptr);
 
     return buffer;
 }
@@ -1019,7 +1071,7 @@ main (int argc, char** argv, char** envp) {
         /* NOTE(jan): Index buffer. */
         {
             VkDeviceSize size = vector_size(indices);
-            scene.indices = buffer_initialize(
+            scene.indices = buffer_create_and_initialize(
                     vk, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size,
                     (void *) indices.data()
             );
