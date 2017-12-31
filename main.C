@@ -1,3 +1,4 @@
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <set>
@@ -8,6 +9,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "easylogging++.h"
 
@@ -21,6 +23,12 @@ struct VK {
     VkPhysicalDevice physical_device;
 };
 
+struct {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+} mvp;
+
 struct Buffer {
     VkBuffer b;
     VkDeviceMemory m;
@@ -29,6 +37,7 @@ struct Buffer {
 struct Scene {
     Buffer indices;
     Buffer vertices;
+    Buffer mvp;
 };
 
 const std::vector<Vertex> vertices = {
@@ -69,6 +78,9 @@ struct Pipeline {
     VkPipelineLayout layout;
     VkRenderPass pass;
     VkPipeline handle;
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet descriptorSet;
 };
 Pipeline pipeline = {};
 
@@ -795,6 +807,28 @@ main (int argc, char** argv, char** envp) {
             }
         }
 
+        /* NOTE(jan): Descriptor set. */
+        {
+            VkDescriptorSetLayoutBinding dslb = {};
+            dslb.binding = 0;
+            dslb.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            dslb.descriptorCount = 1;
+            dslb.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            dslb.pImmutableSamplers = nullptr;
+
+            VkDescriptorSetLayoutCreateInfo dslci = {};
+            dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            dslci.bindingCount = 1;
+            dslci.pBindings = &dslb;
+
+            VkResult r = vkCreateDescriptorSetLayout(
+                vk.device, &dslci, nullptr, &pipeline.descriptorSetLayout
+            );
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Could not create descriptor set layout.";
+            }
+        }
+
         /* NOTE(jan): Create pipeline. */
         {
             auto code = readFile("shaders/triangle/vert.spv");
@@ -883,7 +917,7 @@ main (int argc, char** argv, char** envp) {
             rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
             rasterizer.lineWidth = 1.0f;
             rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-            rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+            rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
             rasterizer.depthBiasEnable = VK_FALSE;
             rasterizer.depthBiasConstantFactor = 0.0f;
             rasterizer.depthBiasClamp = 0.0f;
@@ -924,12 +958,11 @@ main (int argc, char** argv, char** envp) {
             colorBlending.blendConstants[2] = 0.0f;
             colorBlending.blendConstants[3] = 0.0f;
 
-            /* NOTE(jan): This is for uniform values. */
             VkPipelineLayoutCreateInfo layoutCreateInfo = {};
             layoutCreateInfo.sType =
                     VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            layoutCreateInfo.setLayoutCount = 0;
-            layoutCreateInfo.pSetLayouts = nullptr;
+            layoutCreateInfo.setLayoutCount = 1;
+            layoutCreateInfo.pSetLayouts = &pipeline.descriptorSetLayout;
             layoutCreateInfo.pushConstantRangeCount = 0;
             layoutCreateInfo.pPushConstantRanges = nullptr;
             VkResult r;
@@ -1028,6 +1061,72 @@ main (int argc, char** argv, char** envp) {
             );
         }
 
+        /* NOTE(jan): Uniform buffer. */
+        {
+            VkDeviceSize size = sizeof(mvp);
+            scene.mvp = buffer_create(
+                vk,
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                size
+            );
+        }
+
+        /* NOTE(jan): Descriptor pool. */
+        {
+            VkDescriptorPoolSize dps = {};
+            dps.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            dps.descriptorCount = 1;
+
+            VkDescriptorPoolCreateInfo dpci = {};
+            dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            dpci.poolSizeCount = 1;
+            dpci.pPoolSizes = &dps;
+            dpci.maxSets = 1;
+
+            VkResult r = vkCreateDescriptorPool(
+                    vk.device, &dpci, nullptr, &pipeline.descriptorPool
+            );
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Could not create descriptor pool: " << r;
+            }
+        }
+
+        /* NOTE(jan): Descriptor set. */
+        {
+            VkDescriptorSetLayout layouts[] = {pipeline.descriptorSetLayout};
+            VkDescriptorSetAllocateInfo dsai = {};
+            dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            dsai.descriptorPool = pipeline.descriptorPool;
+            dsai.descriptorSetCount = 1;
+            dsai.pSetLayouts = layouts;
+
+            VkResult r = vkAllocateDescriptorSets(
+                    vk.device, &dsai, &pipeline.descriptorSet
+            );
+            if (r != VK_SUCCESS) {
+                LOG(ERROR) << "Could not allocate descriptor set: " << r;
+            }
+
+            VkDescriptorBufferInfo dbi = {};
+            dbi.buffer = scene.mvp.b;
+            dbi.offset = 0;
+            dbi.range = sizeof(mvp);
+
+            VkWriteDescriptorSet wds = {};
+            wds.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            wds.dstSet = pipeline.descriptorSet;
+            wds.dstBinding = 0;
+            wds.dstArrayElement = 0;
+            wds.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            wds.descriptorCount = 1;
+            wds.pBufferInfo = &dbi;
+
+            vkUpdateDescriptorSets(
+                    vk.device, 1, &wds, 0, nullptr
+            );
+        }
+
         /* NOTE(jan): Command buffer creation. */
         {
             commandBuffers.resize(swapChain.length);
@@ -1067,6 +1166,14 @@ main (int argc, char** argv, char** envp) {
             vkCmdBindPipeline(
                     commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
                     pipeline.handle
+            );
+            vkCmdBindDescriptorSets(
+                    commandBuffers[i],
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    pipeline.layout,
+                    0, 1,
+                    &pipeline.descriptorSet,
+                    0, nullptr
             );
             VkBuffer vertex_buffers[] = {scene.vertices.b};
             VkDeviceSize offsets[] = {0};
@@ -1113,6 +1220,36 @@ main (int argc, char** argv, char** envp) {
         glfwSetKeyCallback(window, on_key_event);
         while(!glfwWindowShouldClose(window)) {
             glfwPollEvents();
+
+            /* NOTE(jan): Calculate MVP. */
+            static auto start = std::chrono::high_resolution_clock::now();
+            auto now = std::chrono::high_resolution_clock::now();
+            float time = std::chrono::duration<
+                    float, std::chrono::seconds::period>(now - start).count();
+            mvp.model = glm::rotate(
+                    glm::mat4(1.0f),
+                    time * glm::radians(90.0f),
+                    glm::vec3(0.0f, 0.0f, 1.0f)
+            );
+            mvp.view = glm::lookAt(
+                    glm::vec3(2.0f, 2.0f, 2.0f),
+                    glm::vec3(0.0f, 0.0f, 0.0f),
+                    glm::vec3(0.0f, 0.0f, 1.0f)
+            );
+            mvp.proj = glm::perspective(
+                    glm::radians(45.0f),
+                    swapChain.extent.width / (float)swapChain.extent.height,
+                    0.1f,
+                    10.0f
+            );
+            /* NOTE(jan): Vulkan's y-axis is inverted relative to OpenGL. */
+            mvp.proj[1][1] = -1;
+
+            /* NOTE(jan): Copy MVP. */
+            void* mvp_dst;
+            vkMapMemory(vk.device, scene.mvp.m, 0, sizeof(mvp), 0, &mvp_dst);
+                memcpy(mvp_dst, &mvp, sizeof(mvp));
+            vkUnmapMemory(vk.device, scene.mvp.m);
 
             uint32_t imageIndex;
             vkAcquireNextImageKHR(
@@ -1175,12 +1312,19 @@ main (int argc, char** argv, char** envp) {
     vkDestroyBuffer(vk.device, scene.indices.b, nullptr);
     vkFreeMemory(device, scene.vertices.m, nullptr);
     vkDestroyBuffer(device, scene.vertices.b, nullptr);
+    vkFreeMemory(device, scene.mvp.m, nullptr);
+    vkDestroyBuffer(device, scene.mvp.b, nullptr);
+    vkDestroyDescriptorPool(
+            vk.device, pipeline.descriptorPool, nullptr
+    );
     vkDestroyCommandPool(device, commandPool, nullptr);
     for (const auto& f: swapChain.framebuffers) {
         vkDestroyFramebuffer(device, f, nullptr);
     }
     vkDestroyPipeline(device, pipeline.handle, nullptr);
     vkDestroyPipelineLayout(device, pipeline.layout, nullptr);
+    vkDestroyDescriptorSetLayout(
+            vk.device, pipeline.descriptorSetLayout, nullptr);
     vkDestroyRenderPass(device, pipeline.pass, nullptr);
     for (const auto& v: swapChain.imageViews) {
         vkDestroyImageView(device, v, nullptr);
