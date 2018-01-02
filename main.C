@@ -18,6 +18,7 @@
 struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 tex;
 };
 
 struct VK {
@@ -51,10 +52,10 @@ struct Scene {
 };
 
 const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-        {{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}}
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f}}
 };
 
 const std::vector<uint16_t> indices = {
@@ -837,17 +838,23 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Descriptor set. */
         {
-            VkDescriptorSetLayoutBinding dslb = {};
-            dslb.binding = 0;
-            dslb.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            dslb.descriptorCount = 1;
-            dslb.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            dslb.pImmutableSamplers = nullptr;
+            VkDescriptorSetLayoutBinding bindings[2];
+            bindings[0].binding = 0;
+            bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            bindings[0].descriptorCount = 1;
+            bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            bindings[0].pImmutableSamplers = nullptr;
+            bindings[1].binding = 1;
+            bindings[1].descriptorCount = 1;
+            bindings[1].descriptorType =
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+            bindings[1].pImmutableSamplers = nullptr;
 
             VkDescriptorSetLayoutCreateInfo dslci = {};
             dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            dslci.bindingCount = 1;
-            dslci.pBindings = &dslb;
+            dslci.bindingCount = 2;
+            dslci.pBindings = bindings;
 
             VkResult r = vkCreateDescriptorSetLayout(
                 vk.device, &dslci, nullptr, &pipeline.descriptorSetLayout
@@ -891,23 +898,26 @@ main (int argc, char** argv, char** envp) {
             vibd.stride = sizeof(Vertex);
             vibd.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-            VkVertexInputAttributeDescription viads[] = {{}, {}};
+            VkVertexInputAttributeDescription viads[3] = {};
             viads[0].binding = 0;
             viads[0].location = 0;
             viads[0].format = VK_FORMAT_R32G32_SFLOAT;
             viads[0].offset = offsetof(Vertex, pos);
-
             viads[1].binding = 0;
             viads[1].location = 1;
             viads[1].format = VK_FORMAT_R32G32B32_SFLOAT;
             viads[1].offset = offsetof(Vertex, color);
+            viads[2].binding = 0;
+            viads[2].location = 2;
+            viads[2].format = VK_FORMAT_R32G32_SFLOAT;
+            viads[2].offset = offsetof(Vertex, tex);
 
             VkPipelineVertexInputStateCreateInfo visci = {};
             visci.sType =
                     VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
             visci.vertexBindingDescriptionCount = 1;
             visci.pVertexBindingDescriptions = &vibd;
-            visci.vertexAttributeDescriptionCount = 2;
+            visci.vertexAttributeDescriptionCount = 3;
             visci.pVertexAttributeDescriptions = viads;
 
             VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
@@ -1261,14 +1271,16 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Descriptor pool. */
         {
-            VkDescriptorPoolSize dps = {};
-            dps.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            dps.descriptorCount = 1;
+            VkDescriptorPoolSize dps[2] = {};
+            dps[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            dps[0].descriptorCount = 1;
+            dps[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            dps[1].descriptorCount = 1;
 
             VkDescriptorPoolCreateInfo dpci = {};
             dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            dpci.poolSizeCount = 1;
-            dpci.pPoolSizes = &dps;
+            dpci.poolSizeCount = 2;
+            dpci.pPoolSizes = dps;
             dpci.maxSets = 1;
 
             VkResult r = vkCreateDescriptorPool(
@@ -1300,17 +1312,29 @@ main (int argc, char** argv, char** envp) {
             dbi.offset = 0;
             dbi.range = sizeof(mvp);
 
-            VkWriteDescriptorSet wds = {};
-            wds.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            wds.dstSet = pipeline.descriptorSet;
-            wds.dstBinding = 0;
-            wds.dstArrayElement = 0;
-            wds.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            wds.descriptorCount = 1;
-            wds.pBufferInfo = &dbi;
+            VkDescriptorImageInfo dii = {};
+            dii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            dii.imageView = scene.texture.v;
+            dii.sampler = scene.texture.s;
+
+            VkWriteDescriptorSet wds[2] = {};
+            wds[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            wds[0].dstSet = pipeline.descriptorSet;
+            wds[0].dstBinding = 0;
+            wds[0].dstArrayElement = 0;
+            wds[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            wds[0].descriptorCount = 1;
+            wds[0].pBufferInfo = &dbi;
+            wds[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            wds[1].dstSet = pipeline.descriptorSet;
+            wds[1].dstBinding = 1;
+            wds[1].dstArrayElement = 0;
+            wds[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            wds[1].descriptorCount = 1;
+            wds[1].pImageInfo = &dii;
 
             vkUpdateDescriptorSets(
-                    vk.device, 1, &wds, 0, nullptr
+                    vk.device, 2, wds, 0, nullptr
             );
         }
 
