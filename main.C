@@ -40,6 +40,7 @@ struct Image {
     VkImage i;
     VkImageView v;
     VkDeviceMemory m;
+    VkSampler s;
 };
 
 struct Scene {
@@ -529,6 +530,7 @@ main (int argc, char** argv, char** envp) {
             }
 
             if (requiredExtensionSet.empty() &&
+                    deviceFeatures.samplerAnisotropy &&
                     !swapChain.formats.empty() &&
                     !swapChain.presentModes.empty()) {
                 vkGetPhysicalDeviceQueueFamilyProperties(
@@ -594,6 +596,7 @@ main (int argc, char** argv, char** envp) {
             queueCreateInfos.push_back(cf);
         }
         VkPhysicalDeviceFeatures features = {};
+        features.samplerAnisotropy = VK_TRUE;
         VkDeviceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         createInfo.queueCreateInfoCount =
@@ -1230,6 +1233,30 @@ main (int argc, char** argv, char** envp) {
                 vk.device, &ivci, nullptr, &scene.texture.v
             );
             if (r != VK_SUCCESS) LOG(ERROR) << "Could not create image view.";
+
+            VkSamplerCreateInfo sci = {};
+            sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+            sci.magFilter = VK_FILTER_LINEAR;
+            sci.minFilter = VK_FILTER_LINEAR;
+            sci.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            sci.anisotropyEnable = VK_TRUE;
+            sci.maxAnisotropy = 16;
+            sci.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+            sci.unnormalizedCoordinates = VK_FALSE;
+            sci.compareEnable = VK_FALSE;
+            sci.compareOp = VK_COMPARE_OP_ALWAYS;
+            sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            sci.mipLodBias = 0.0f;
+            sci.minLod = 0.0f;
+            sci.maxLod = 0.0f;
+
+            r = vkCreateSampler(
+                vk.device, &sci, nullptr, &scene.texture.s
+            );
+            if (r != VK_SUCCESS) LOG(ERROR) << "Could not create image "
+                                            << "sampler.";
         }
 
         /* NOTE(jan): Descriptor pool. */
@@ -1468,6 +1495,7 @@ main (int argc, char** argv, char** envp) {
     }
     vkDestroySemaphore(device, renderFinished, nullptr);
     vkDestroySemaphore(device, imageAvailable, nullptr);
+    vkDestroySampler(vk.device, scene.texture.s, nullptr);
     vkDestroyImageView(vk.device, scene.texture.v, nullptr);
     vkDestroyImage(vk.device, scene.texture.i, nullptr);
     vkFreeMemory(vk.device, scene.texture.m, nullptr);
