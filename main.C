@@ -1075,6 +1075,28 @@ main (int argc, char** argv, char** envp) {
             );
         }
 
+        /* NOTE(jan): Texture buffer. */
+        {
+            int width;
+            int height;
+            int depth;
+            stbi_uc* pixels = stbi_load(
+                    "texture.jpg", &width, &height, &depth, STBI_rgb_alpha
+            );
+            if (!pixels) {
+                LOG(ERROR) << "Could not load texture.";
+            }
+            VkDeviceSize size = width * height * depth;
+
+            auto staging = buffer_create(
+                    vk,
+                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    size
+            );
+        }
+
         /* NOTE(jan): Descriptor pool. */
         {
             VkDescriptorPoolSize dps = {};
