@@ -36,10 +36,16 @@ struct Buffer {
     VkDeviceMemory m;
 };
 
+struct Image {
+    VkImage i;
+    VkDeviceMemory m;
+};
+
 struct Scene {
     Buffer indices;
     Buffer vertices;
     Buffer mvp;
+    Image texture;
 };
 
 const std::vector<Vertex> vertices = {
@@ -177,6 +183,71 @@ createShaderModule(const std::vector<char>& code) {
     return module;
 }
 
+uint32_t
+memory_find_type(VK& vk,
+                 VkMemoryRequirements requirements,
+                 VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties pdmp;
+    vkGetPhysicalDeviceMemoryProperties(vk.physical_device, &pdmp);
+
+    VkBool32 found = VK_FALSE;
+    uint32_t memory_type = 0;
+    auto typeFilter = requirements.memoryTypeBits;
+    for (uint32_t i = 0; i < pdmp.memoryTypeCount; i++) {
+        auto& type = pdmp.memoryTypes[i];
+        auto check_type = typeFilter & (i << i);
+        auto check_flags = type.propertyFlags & properties;
+        if (check_type && check_flags) {
+            found = true;
+            memory_type = i;
+            break;
+        }
+    }
+    if (!found) {
+        LOG(ERROR) << "Suitable buffer memory not found";
+    }
+    return memory_type;
+}
+
+VkCommandBuffer
+command_one_off_start(VK &vk) {
+    /* TODO(jan): Create a separate command pool for short lived buffers and
+     * set VK_COMMAND_POOL_CREATE_TRANSIENT_BIT so the implementation can
+     * optimize this. */
+    VkCommandBufferAllocateInfo cbai = {};
+    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cbai.commandPool = commandPool;
+    cbai.commandBufferCount = 1;
+
+    VkCommandBuffer cb;
+    vkAllocateCommandBuffers(vk.device, &cbai, &cb);
+
+    VkCommandBufferBeginInfo cbbi = {};
+    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(cb, &cbbi);
+
+    return cb;
+}
+
+void
+command_one_off_stop_and_submit(VK& vk,
+                                VkCommandBuffer& cb) {
+    vkEndCommandBuffer(cb);
+
+    VkSubmitInfo si = {};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cb;
+
+    vkQueueSubmit(graphicsQueue, 1, &si, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphicsQueue);
+
+    vkFreeCommandBuffers(vk.device, commandPool, 1, &cb);
+}
+
 Buffer
 buffer_create(VK& vk,
               VkBufferUsageFlags usage,
@@ -198,30 +269,11 @@ buffer_create(VK& vk,
 
     VkMemoryRequirements mr;
     vkGetBufferMemoryRequirements(vk.device, buffer.b, &mr);
-    VkPhysicalDeviceMemoryProperties pdmp;
-    vkGetPhysicalDeviceMemoryProperties(vk.physical_device, &pdmp);
-
-    VkBool32 found = VK_FALSE;
-    uint32_t memory_type = 0;
-    auto typeFilter = mr.memoryTypeBits;
-    for (uint32_t i = 0; i < pdmp.memoryTypeCount; i++) {
-        auto& type = pdmp.memoryTypes[i];
-        auto check_type = typeFilter & (i << i);
-        auto check_flags = type.propertyFlags & required_memory_properties;
-        if (check_type && check_flags) {
-            found = true;
-            memory_type = i;
-            break;
-        }
-    }
-    if (!found) {
-        LOG(ERROR) << "Suitable buffer memory not found: " << r;
-    }
 
     VkMemoryAllocateInfo mai = {};
     mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     mai.allocationSize = mr.size;
-    mai.memoryTypeIndex = memory_type;
+    mai.memoryTypeIndex = memory_find_type(vk, mr, required_memory_properties);
     r = vkAllocateMemory(vk.device, &mai, nullptr, &buffer.m);
     if (r != VK_SUCCESS) {
         LOG(ERROR) << "Could not allocate buffer memory: " << r;
@@ -258,41 +310,11 @@ buffer_create_and_initialize(
             size
     );
 
-    /* TODO(jan): Create a separate command pool for short lived buffers and
-     * set VK_COMMAND_POOL_CREATE_TRANSIENT_BIT so the implementation can
-     * optimize this. */
-    VkCommandBufferAllocateInfo cbai = {};
-    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cbai.commandPool = commandPool;
-    cbai.commandBufferCount = 1;
-
-    VkCommandBuffer cb;
-    vkAllocateCommandBuffers(vk.device, &cbai, &cb);
-
-    VkCommandBufferBeginInfo cbbi = {};
-    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    vkBeginCommandBuffer(cb, &cbbi);
-
+    auto cb = command_one_off_start(vk);
     VkBufferCopy bc = {};
-    bc.dstOffset = 0;
-    bc.srcOffset = 0;
     bc.size = size;
     vkCmdCopyBuffer(cb, staging.b, buffer.b, 1, &bc);
-
-    vkEndCommandBuffer(cb);
-
-    VkSubmitInfo si = {};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &cb;
-
-    vkQueueSubmit(graphicsQueue, 1, &si, VK_NULL_HANDLE);
-    vkQueueWaitIdle(graphicsQueue);
-
-    vkFreeCommandBuffers(vk.device, commandPool, 1, &cb);
+    command_one_off_stop_and_submit(vk, cb);
 
     vkDestroyBuffer(vk.device, staging.b, nullptr);
     vkFreeMemory(vk.device, staging.m, nullptr);
@@ -1087,11 +1109,11 @@ main (int argc, char** argv, char** envp) {
             }
             auto length = width * height * 4;
             auto staging = buffer_create(
-                    vk,
-                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    length
+                vk,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                length
             );
             void* data;
             auto dsize = (VkDeviceSize)length;
@@ -1099,6 +1121,98 @@ main (int argc, char** argv, char** envp) {
                 memcpy(data, pixels, length);
             vkUnmapMemory(vk.device, staging.m);
             stbi_image_free(pixels);
+
+            VkImageCreateInfo ici = {};
+            ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            ici.imageType = VK_IMAGE_TYPE_2D;
+            ici.extent.width = static_cast<uint32_t>(width);
+            ici.extent.height = static_cast<uint32_t>(height);
+            ici.extent.depth = 1;
+            ici.mipLevels = 1;
+            ici.arrayLayers = 1;
+            ici.format = VK_FORMAT_R8G8B8A8_UNORM;
+            ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+            ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            ici.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                        VK_IMAGE_USAGE_SAMPLED_BIT;
+            ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            ici.samples = VK_SAMPLE_COUNT_1_BIT;
+
+            VkResult r = vkCreateImage(
+                vk.device, &ici, nullptr, &scene.texture.i
+            );
+            if (r != VK_SUCCESS) LOG(ERROR) << "Could not create image.";
+
+            VkMemoryRequirements mr;
+            vkGetImageMemoryRequirements(vk.device, scene.texture.i, &mr);
+
+            VkMemoryAllocateInfo mai = {};
+            mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            mai.allocationSize = mr.size;
+            mai.memoryTypeIndex = memory_find_type(
+                vk, mr, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+            );
+
+            r = vkAllocateMemory(
+                vk.device, &mai, nullptr, &scene.texture.m
+            );
+            if (r != VK_SUCCESS) LOG(ERROR) << "Could not allocate image.";
+
+            vkBindImageMemory(vk.device, scene.texture.i, scene.texture.m, 0);
+
+            auto cb = command_one_off_start(vk);
+
+            VkImageMemoryBarrier barrier = {};
+            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image = scene.texture.i;
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            barrier.subresourceRange.baseMipLevel = 0;
+            barrier.subresourceRange.levelCount = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount = 1;
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            vkCmdPipelineBarrier(
+                cb,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                0,
+                0, nullptr,
+                0, nullptr,
+                1, &barrier
+            );
+
+            VkBufferImageCopy bic = {};
+            bic.bufferOffset = 0;
+            bic.bufferRowLength = 0;
+            bic.bufferImageHeight = 0;
+            bic.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            bic.imageSubresource.mipLevel = 0;
+            bic.imageSubresource.baseArrayLayer = 0;
+            bic.imageSubresource.layerCount = 1;
+            bic.imageOffset = {0, 0};
+            bic.imageExtent = {
+                static_cast<uint32_t>(width),
+                static_cast<uint32_t>(height),
+                1
+            };
+            vkCmdCopyBufferToImage(
+                cb,
+                staging.b,
+                scene.texture.i,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                1,
+                &bic
+            );
+
+            command_one_off_stop_and_submit(vk, cb);
+
+            vkDestroyBuffer(vk.device, staging.b, nullptr);
+            vkFreeMemory(vk.device, staging.m, nullptr);
         }
 
         /* NOTE(jan): Descriptor pool. */
@@ -1337,6 +1451,8 @@ main (int argc, char** argv, char** envp) {
     }
     vkDestroySemaphore(device, renderFinished, nullptr);
     vkDestroySemaphore(device, imageAvailable, nullptr);
+    vkDestroyImage(vk.device, scene.texture.i, nullptr);
+    vkFreeMemory(vk.device, scene.texture.m, nullptr);
     vkFreeMemory(vk.device, scene.indices.m, nullptr);
     vkDestroyBuffer(vk.device, scene.indices.b, nullptr);
     vkFreeMemory(device, scene.vertices.m, nullptr);
