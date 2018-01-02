@@ -1084,6 +1084,12 @@ main (int argc, char** argv, char** envp) {
                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                     img.length
             );
+            void* data;
+            auto dsize = (VkDeviceSize)img.length;
+            vkMapMemory(vk.device, staging.m, 0, dsize, 0, &data);
+                memcpy(data, img.data, img.length);
+            vkUnmapMemory(vk.device, staging.m);
+            image_free(img);
         }
 
         /* NOTE(jan): Descriptor pool. */

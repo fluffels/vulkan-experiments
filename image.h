@@ -12,5 +12,8 @@ struct Image {
 };
 
 
+void
+image_free (Image i);
+
 Image
 image_load (const char* fname);

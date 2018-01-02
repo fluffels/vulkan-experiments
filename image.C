@@ -3,6 +3,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+void
+image_free (Image i) {
+    stbi_image_free(i.data);
+}
+
 Image
 image_load (const char* fname) {
     Image img;
