@@ -38,6 +38,7 @@ struct Buffer {
 
 struct Image {
     VkImage i;
+    VkImageView v;
     VkDeviceMemory m;
 };
 
@@ -1213,6 +1214,22 @@ main (int argc, char** argv, char** envp) {
 
             vkDestroyBuffer(vk.device, staging.b, nullptr);
             vkFreeMemory(vk.device, staging.m, nullptr);
+
+            VkImageViewCreateInfo ivci = {};
+            ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            ivci.image = scene.texture.i;
+            ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            ivci.format = VK_FORMAT_R8G8B8A8_UNORM;
+            ivci.subresourceRange.layerCount = 1;
+            ivci.subresourceRange.baseArrayLayer = 0;
+            ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            ivci.subresourceRange.baseMipLevel = 0;
+            ivci.subresourceRange.levelCount = 1;
+
+            r = vkCreateImageView(
+                vk.device, &ivci, nullptr, &scene.texture.v
+            );
+            if (r != VK_SUCCESS) LOG(ERROR) << "Could not create image view.";
         }
 
         /* NOTE(jan): Descriptor pool. */
@@ -1451,6 +1468,7 @@ main (int argc, char** argv, char** envp) {
     }
     vkDestroySemaphore(device, renderFinished, nullptr);
     vkDestroySemaphore(device, imageAvailable, nullptr);
+    vkDestroyImageView(vk.device, scene.texture.v, nullptr);
     vkDestroyImage(vk.device, scene.texture.i, nullptr);
     vkFreeMemory(vk.device, scene.texture.m, nullptr);
     vkFreeMemory(vk.device, scene.indices.m, nullptr);
