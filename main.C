@@ -12,8 +12,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "easylogging++.h"
-
-#include "image.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 struct Vertex {
     glm::vec2 pos;
@@ -1076,20 +1076,29 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Texture buffer. */
         {
-            auto img = image_load("texture.jpg");
+            int width;
+            int height;
+            int depth;
+            stbi_uc* pixels = stbi_load(
+                "texture.jpg", &width, &height, &depth, STBI_rgb_alpha
+            );
+            if (!pixels) {
+                LOG(ERROR) << "Could not load texture.";
+            }
+            auto length = width * height * 4;
             auto staging = buffer_create(
                     vk,
                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    img.length
+                    length
             );
             void* data;
-            auto dsize = (VkDeviceSize)img.length;
+            auto dsize = (VkDeviceSize)length;
             vkMapMemory(vk.device, staging.m, 0, dsize, 0, &data);
-                memcpy(data, img.data, img.length);
+                memcpy(data, pixels, length);
             vkUnmapMemory(vk.device, staging.m);
-            image_free(img);
+            stbi_image_free(pixels);
         }
 
         /* NOTE(jan): Descriptor pool. */

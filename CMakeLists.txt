@@ -4,7 +4,7 @@ project (Vulkan)
 find_package(glfw3 REQUIRED)
 find_package(Vulkan REQUIRED)
 include_directories(${Vulkan_INCLUDE_DIRS})
-add_executable (main main.C image.C)
+add_executable (main main.C)
 target_link_libraries (main glfw)
 target_link_libraries (main ${Vulkan_LIBRARIES})
 add_custom_target(
