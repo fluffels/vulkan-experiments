@@ -192,6 +192,49 @@ createShaderModule(const std::vector<char>& code) {
     return module;
 }
 
+VkFormat
+format_select_best_supported(VK& vk,
+                             const std::vector<VkFormat>& candidates,
+                             VkImageTiling tiling,
+                             VkFormatFeatureFlags features) {
+    for (VkFormat format: candidates) {
+        VkFormatProperties properties;
+        vkGetPhysicalDeviceFormatProperties(
+            vk.physical_device, format, &properties
+        );
+        VkFormatFeatureFlags available_features;
+        if (tiling == VK_IMAGE_TILING_LINEAR) {
+            available_features = properties.linearTilingFeatures;
+        } else if (tiling == VK_IMAGE_TILING_OPTIMAL) {
+            available_features = properties.optimalTilingFeatures;
+        }
+        if (available_features & features) {
+            return format;
+        }
+    }
+    throw std::runtime_error("could not select an appropriate format");
+}
+
+bool
+format_has_stencil(VkFormat format) {
+    bool result;
+    result = (format == VK_FORMAT_D32_SFLOAT_S8_UINT);
+    result = result ||(format == VK_FORMAT_D24_UNORM_S8_UINT);
+    return result;
+}
+
+VkFormat
+format_find_depth(VK& vk) {
+    auto candidates = {
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT
+    };
+    auto tiling = VK_IMAGE_TILING_OPTIMAL;
+    auto features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    return format_select_best_supported(vk, candidates, tiling, features);
+}
+
 uint32_t
 memory_find_type(VK& vk,
                  VkMemoryRequirements requirements,
@@ -216,6 +259,48 @@ memory_find_type(VK& vk,
         LOG(ERROR) << "Suitable buffer memory not found";
     }
     return memory_type;
+}
+
+Image
+image_create(VK& vk,
+             VkExtent3D extent,
+             VkFormat format,
+             VkImageTiling tiling,
+             VkImageUsageFlags usage,
+             VkMemoryPropertyFlags properties) {
+    VkImageCreateInfo ici = {};
+    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    ici.imageType = VK_IMAGE_TYPE_2D;
+    ici.extent = extent;
+    ici.mipLevels = 1;
+    ici.arrayLayers = 1;
+    ici.format = format;
+    ici.tiling = tiling;
+    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    ici.usage = usage;
+    ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    ici.samples = VK_SAMPLE_COUNT_1_BIT;
+
+    Image image = {};
+    VkResult r = vkCreateImage(vk.device, &ici, nullptr, &image.i);
+    if (r != VK_SUCCESS) {
+        throw std::runtime_error("Could not create image.");
+    }
+
+    VkMemoryRequirements mr;
+    vkGetImageMemoryRequirements(vk.device, image.i, &mr);
+
+    VkMemoryAllocateInfo mai = {};
+    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    mai.allocationSize = mr.size;
+    mai.memoryTypeIndex = memory_find_type(vk, mr, properties);
+
+    r = vkAllocateMemory(vk.device, &mai, nullptr, &image.m);
+    if (r != VK_SUCCESS) {
+        throw std::runtime_error("Could not allocate image.");
+    }
+
+    return image;
 }
 
 VkCommandBuffer
@@ -1142,42 +1227,18 @@ main (int argc, char** argv, char** envp) {
             vkUnmapMemory(vk.device, staging.m);
             stbi_image_free(pixels);
 
-            VkImageCreateInfo ici = {};
-            ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            ici.imageType = VK_IMAGE_TYPE_2D;
-            ici.extent.width = static_cast<uint32_t>(width);
-            ici.extent.height = static_cast<uint32_t>(height);
-            ici.extent.depth = 1;
-            ici.mipLevels = 1;
-            ici.arrayLayers = 1;
-            ici.format = VK_FORMAT_R8G8B8A8_UNORM;
-            ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-            ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            ici.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                        VK_IMAGE_USAGE_SAMPLED_BIT;
-            ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            ici.samples = VK_SAMPLE_COUNT_1_BIT;
-
-            VkResult r = vkCreateImage(
-                vk.device, &ici, nullptr, &scene.texture.i
+            scene.texture = image_create(
+                vk,
+                {
+                    static_cast<uint32_t>(width),
+                    static_cast<uint32_t>(height),
+                    1
+                },
+                VK_FORMAT_R8G8B8A8_UNORM,
+                VK_IMAGE_TILING_OPTIMAL,
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
             );
-            if (r != VK_SUCCESS) LOG(ERROR) << "Could not create image.";
-
-            VkMemoryRequirements mr;
-            vkGetImageMemoryRequirements(vk.device, scene.texture.i, &mr);
-
-            VkMemoryAllocateInfo mai = {};
-            mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            mai.allocationSize = mr.size;
-            mai.memoryTypeIndex = memory_find_type(
-                vk, mr, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-            );
-
-            r = vkAllocateMemory(
-                vk.device, &mai, nullptr, &scene.texture.m
-            );
-            if (r != VK_SUCCESS) LOG(ERROR) << "Could not allocate image.";
-
             vkBindImageMemory(vk.device, scene.texture.i, scene.texture.m, 0);
 
             auto cb = command_one_off_start(vk);
@@ -1245,7 +1306,7 @@ main (int argc, char** argv, char** envp) {
             ivci.subresourceRange.baseMipLevel = 0;
             ivci.subresourceRange.levelCount = 1;
 
-            r = vkCreateImageView(
+            VkResult r = vkCreateImageView(
                 vk.device, &ivci, nullptr, &scene.texture.v
             );
             if (r != VK_SUCCESS) LOG(ERROR) << "Could not create image view.";
