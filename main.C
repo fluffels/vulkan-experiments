@@ -968,25 +968,36 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Create render passes. */
         {
-            VkAttachmentDescription colorAttachment = {};
-            colorAttachment.format = swapChain.format.format;
-            colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-            colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            VkAttachmentDescription descriptions[2] = {};
+            descriptions[0].format = swapChain.format.format;
+            descriptions[0].samples = VK_SAMPLE_COUNT_1_BIT;
+            descriptions[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            descriptions[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            descriptions[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            descriptions[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            descriptions[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            descriptions[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            descriptions[1].format = format_find_depth(vk);
+            descriptions[1].samples = VK_SAMPLE_COUNT_1_BIT;
+            descriptions[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            descriptions[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            descriptions[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            descriptions[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            descriptions[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            descriptions[1].finalLayout =
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-            VkAttachmentReference colorAttachmentRef = {};
-            colorAttachmentRef.attachment = 0;
-            colorAttachmentRef.layout =
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            VkAttachmentReference refs[2] = {};
+            refs[0].attachment = 0;
+            refs[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            refs[1].attachment = 1;
+            refs[1].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
             VkSubpassDescription subpass = {};
             subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
             subpass.colorAttachmentCount = 1;
-            subpass.pColorAttachments = &colorAttachmentRef;
+            subpass.pColorAttachments = &refs[0];
+            subpass.pDepthStencilAttachment = &refs[1];
 
             VkSubpassDependency dep = {};
             dep.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -999,8 +1010,8 @@ main (int argc, char** argv, char** envp) {
 
             VkRenderPassCreateInfo cf = {};
             cf.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-            cf.attachmentCount = 1;
-            cf.pAttachments = &colorAttachment;
+            cf.attachmentCount = 2;
+            cf.pAttachments = descriptions;
             cf.subpassCount = 1;
             cf.pSubpasses = &subpass;
             cf.dependencyCount = 1;
