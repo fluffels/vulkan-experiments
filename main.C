@@ -49,6 +49,7 @@ struct Scene {
     Buffer vertices;
     Buffer mvp;
     Image texture;
+    Image depth;
 };
 
 const std::vector<Vertex> vertices = {
