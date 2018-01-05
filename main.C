@@ -1238,12 +1238,13 @@ main (int argc, char** argv, char** envp) {
             swapChain.framebuffers.resize(swapChain.length);
             for (size_t i = 0; i < swapChain.length; i++) {
                 VkImageView attachments[] = {
-                        swapChain.imageViews[i]
+                        swapChain.imageViews[i],
+                        scene.depth.v
                 };
                 VkFramebufferCreateInfo cf = {};
                 cf.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
                 cf.renderPass = pipeline.pass;
-                cf.attachmentCount = 1;
+                cf.attachmentCount = 2;
                 cf.pAttachments = attachments;
                 cf.width = swapChain.extent.width;
                 cf.height = swapChain.extent.height;
