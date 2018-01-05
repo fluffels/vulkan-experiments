@@ -1671,6 +1671,9 @@ main (int argc, char** argv, char** envp) {
     }
     vkDestroySemaphore(device, renderFinished, nullptr);
     vkDestroySemaphore(device, imageAvailable, nullptr);
+    vkDestroyImageView(vk.device, scene.depth.v, nullptr);
+    vkFreeMemory(vk.device, scene.depth.m, nullptr);
+    vkDestroyImage(vk.device, scene.depth.i, nullptr);
     vkDestroySampler(vk.device, scene.texture.s, nullptr);
     vkDestroyImageView(vk.device, scene.texture.v, nullptr);
     vkDestroyImage(vk.device, scene.texture.i, nullptr);
