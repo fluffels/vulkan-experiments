@@ -375,13 +375,21 @@ image_transition(VK& vk,
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = image.i;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = 1;
     barrier.subresourceRange.baseArrayLayer = 0;
     barrier.subresourceRange.layerCount = 1;
     barrier.srcAccessMask = 0;
     barrier.dstAccessMask = 0;
+
+    if (new_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (format_has_stencil(format)) {
+            barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+    } else {
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
 
     VkPipelineStageFlags stage_src;
     VkPipelineStageFlags stage_dst;
@@ -398,6 +406,16 @@ image_transition(VK& vk,
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         stage_src = VK_PIPELINE_STAGE_TRANSFER_BIT;
         stage_dst = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else if ((old_layout == VK_IMAGE_LAYOUT_UNDEFINED) &&
+               (new_layout ==
+                   VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        stage_src = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        stage_dst = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    } else {
+        throw std::invalid_argument("Unsupported layout transition.");
     }
 
     auto cb = command_one_off_start(vk);
@@ -1379,6 +1397,28 @@ main (int argc, char** argv, char** envp) {
             );
             if (r != VK_SUCCESS) LOG(ERROR) << "Could not create image "
                                             << "sampler.";
+        }
+
+        /* NOTE(jan): Depth buffer. */
+        {
+            auto format = format_find_depth(vk);
+            scene.depth = image_create(
+                vk,
+                {swapChain.extent.width, swapChain.extent.height, 1},
+                format,
+                format,
+                VK_IMAGE_TILING_OPTIMAL,
+                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                VK_IMAGE_ASPECT_DEPTH_BIT
+            );
+            image_transition(
+                vk,
+                scene.depth,
+                format,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+            );
         }
 
         /* NOTE(jan): Descriptor pool. */
