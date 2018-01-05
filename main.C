@@ -264,7 +264,8 @@ memory_find_type(VK& vk,
 Image
 image_create(VK& vk,
              VkExtent3D extent,
-             VkFormat format,
+             VkFormat image_format,
+             VkFormat view_format,
              VkImageTiling tiling,
              VkImageUsageFlags usage,
              VkMemoryPropertyFlags properties) {
@@ -274,7 +275,7 @@ image_create(VK& vk,
     ici.extent = extent;
     ici.mipLevels = 1;
     ici.arrayLayers = 1;
-    ici.format = format;
+    ici.format = image_format;
     ici.tiling = tiling;
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     ici.usage = usage;
@@ -298,6 +299,24 @@ image_create(VK& vk,
     r = vkAllocateMemory(vk.device, &mai, nullptr, &image.m);
     if (r != VK_SUCCESS) {
         throw std::runtime_error("Could not allocate image.");
+    }
+
+    vkBindImageMemory(vk.device, image.i, image.m, 0);
+
+    VkImageViewCreateInfo ivci = {};
+    ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    ivci.image = image.i;
+    ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    ivci.format = view_format;
+    ivci.subresourceRange.layerCount = 1;
+    ivci.subresourceRange.baseArrayLayer = 0;
+    ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    ivci.subresourceRange.baseMipLevel = 0;
+    ivci.subresourceRange.levelCount = 1;
+
+    r = vkCreateImageView(vk.device, &ivci, nullptr, &image.v);
+    if (r != VK_SUCCESS) {
+        throw std::runtime_error("Could not create image view.");
     }
 
     return image;
@@ -1235,11 +1254,11 @@ main (int argc, char** argv, char** envp) {
                     1
                 },
                 VK_FORMAT_R8G8B8A8_UNORM,
+                VK_FORMAT_R8G8B8A8_UNORM,
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
             );
-            vkBindImageMemory(vk.device, scene.texture.i, scene.texture.m, 0);
 
             auto cb = command_one_off_start(vk);
 
@@ -1295,22 +1314,6 @@ main (int argc, char** argv, char** envp) {
             vkDestroyBuffer(vk.device, staging.b, nullptr);
             vkFreeMemory(vk.device, staging.m, nullptr);
 
-            VkImageViewCreateInfo ivci = {};
-            ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            ivci.image = scene.texture.i;
-            ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            ivci.format = VK_FORMAT_R8G8B8A8_UNORM;
-            ivci.subresourceRange.layerCount = 1;
-            ivci.subresourceRange.baseArrayLayer = 0;
-            ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            ivci.subresourceRange.baseMipLevel = 0;
-            ivci.subresourceRange.levelCount = 1;
-
-            VkResult r = vkCreateImageView(
-                vk.device, &ivci, nullptr, &scene.texture.v
-            );
-            if (r != VK_SUCCESS) LOG(ERROR) << "Could not create image view.";
-
             VkSamplerCreateInfo sci = {};
             sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
             sci.magFilter = VK_FILTER_LINEAR;
@@ -1329,7 +1332,7 @@ main (int argc, char** argv, char** envp) {
             sci.minLod = 0.0f;
             sci.maxLod = 0.0f;
 
-            r = vkCreateSampler(
+            VkResult r = vkCreateSampler(
                 vk.device, &sci, nullptr, &scene.texture.s
             );
             if (r != VK_SUCCESS) LOG(ERROR) << "Could not create image "
