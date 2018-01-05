@@ -268,7 +268,8 @@ image_create(VK& vk,
              VkFormat view_format,
              VkImageTiling tiling,
              VkImageUsageFlags usage,
-             VkMemoryPropertyFlags properties) {
+             VkMemoryPropertyFlags properties,
+             VkImageAspectFlags aspects) {
     VkImageCreateInfo ici = {};
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     ici.imageType = VK_IMAGE_TYPE_2D;
@@ -310,7 +311,7 @@ image_create(VK& vk,
     ivci.format = view_format;
     ivci.subresourceRange.layerCount = 1;
     ivci.subresourceRange.baseArrayLayer = 0;
-    ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    ivci.subresourceRange.aspectMask = aspects;
     ivci.subresourceRange.baseMipLevel = 0;
     ivci.subresourceRange.levelCount = 1;
 
@@ -1257,7 +1258,8 @@ main (int argc, char** argv, char** envp) {
                 VK_FORMAT_R8G8B8A8_UNORM,
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                VK_IMAGE_ASPECT_COLOR_BIT
             );
 
             auto cb = command_one_off_start(vk);
