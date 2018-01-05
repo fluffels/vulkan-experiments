@@ -362,6 +362,56 @@ command_one_off_stop_and_submit(VK& vk,
     vkFreeCommandBuffers(vk.device, commandPool, 1, &cb);
 }
 
+void
+image_transition(VK& vk,
+                 const Image& image,
+                 VkFormat format,
+                 VkImageLayout old_layout,
+                 VkImageLayout new_layout) {
+    VkImageMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = old_layout;
+    barrier.newLayout = new_layout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image.i;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.srcAccessMask = 0;
+    barrier.dstAccessMask = 0;
+
+    VkPipelineStageFlags stage_src;
+    VkPipelineStageFlags stage_dst;
+
+    if ((old_layout == VK_IMAGE_LAYOUT_UNDEFINED) &&
+        (new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        stage_src = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        stage_dst = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    } else if ((old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) &&
+               (new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)) {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        stage_src = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        stage_dst = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+
+    auto cb = command_one_off_start(vk);
+    vkCmdPipelineBarrier(
+        cb,
+        stage_src, stage_dst,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier
+    );
+    command_one_off_stop_and_submit(vk, cb);
+}
+
 Buffer
 buffer_create(VK& vk,
               VkBufferUsageFlags usage,
@@ -1262,32 +1312,15 @@ main (int argc, char** argv, char** envp) {
                 VK_IMAGE_ASPECT_COLOR_BIT
             );
 
-            auto cb = command_one_off_start(vk);
-
-            VkImageMemoryBarrier barrier = {};
-            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.image = scene.texture.i;
-            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            barrier.subresourceRange.baseMipLevel = 0;
-            barrier.subresourceRange.levelCount = 1;
-            barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount = 1;
-            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-            vkCmdPipelineBarrier(
-                cb,
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                0,
-                0, nullptr,
-                0, nullptr,
-                1, &barrier
+            image_transition(
+                vk,
+                scene.texture,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
             );
 
+            auto cb = command_one_off_start(vk);
             VkBufferImageCopy bic = {};
             bic.bufferOffset = 0;
             bic.bufferRowLength = 0;
@@ -1310,8 +1343,15 @@ main (int argc, char** argv, char** envp) {
                 1,
                 &bic
             );
-
             command_one_off_stop_and_submit(vk, cb);
+
+            image_transition(
+                vk,
+                scene.texture,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            );
 
             vkDestroyBuffer(vk.device, staging.b, nullptr);
             vkFreeMemory(vk.device, staging.m, nullptr);
