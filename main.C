@@ -1243,31 +1243,6 @@ main (int argc, char** argv, char** envp) {
             vkDestroyShaderModule(device, pipeline.vertModule, nullptr);
         }
 
-        /* NOTE(jan): Framebuffer. */
-        {
-            swapChain.framebuffers.resize(swapChain.length);
-            for (size_t i = 0; i < swapChain.length; i++) {
-                VkImageView attachments[] = {
-                        swapChain.imageViews[i],
-                        scene.depth.v
-                };
-                VkFramebufferCreateInfo cf = {};
-                cf.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                cf.renderPass = pipeline.pass;
-                cf.attachmentCount = 2;
-                cf.pAttachments = attachments;
-                cf.width = swapChain.extent.width;
-                cf.height = swapChain.extent.height;
-                cf.layers = 1;
-                VkResult r = vkCreateFramebuffer(
-                        device, &cf, nullptr, &swapChain.framebuffers[i]
-                );
-                if (r != VK_SUCCESS) {
-                    LOG(ERROR) << "Could not create framebuffer.";
-                }
-            }
-        }
-
         /* NOTE(jan): Command pool creation. */
         {
             VkCommandPoolCreateInfo cf = {};
@@ -1441,6 +1416,31 @@ main (int argc, char** argv, char** envp) {
                 VK_IMAGE_LAYOUT_UNDEFINED,
                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
             );
+        }
+
+        /* NOTE(jan): Framebuffer. */
+        {
+            swapChain.framebuffers.resize(swapChain.length);
+            for (size_t i = 0; i < swapChain.length; i++) {
+                VkImageView attachments[] = {
+                    swapChain.imageViews[i],
+                    scene.depth.v
+                };
+                VkFramebufferCreateInfo cf = {};
+                cf.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                cf.renderPass = pipeline.pass;
+                cf.attachmentCount = 2;
+                cf.pAttachments = attachments;
+                cf.width = swapChain.extent.width;
+                cf.height = swapChain.extent.height;
+                cf.layers = 1;
+                VkResult r = vkCreateFramebuffer(
+                    device, &cf, nullptr, &swapChain.framebuffers[i]
+                );
+                if (r != VK_SUCCESS) {
+                    LOG(ERROR) << "Could not create framebuffer.";
+                }
+            }
         }
 
         /* NOTE(jan): Descriptor pool. */
