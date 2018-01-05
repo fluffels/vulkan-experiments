@@ -1201,6 +1201,16 @@ main (int argc, char** argv, char** envp) {
                 LOG(ERROR) << "Could not create pipeline layout.";
             }
 
+            VkPipelineDepthStencilStateCreateInfo dssci = {};
+            dssci.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            dssci.depthTestEnable = VK_TRUE;
+            dssci.depthWriteEnable = VK_TRUE;
+            dssci.depthCompareOp = VK_COMPARE_OP_LESS;
+            dssci.depthBoundsTestEnable = VK_FALSE;
+            dssci.front = {};
+            dssci.back = {};
+
             VkGraphicsPipelineCreateInfo pipelineInfo = {};
             pipelineInfo.sType =
                     VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1211,7 +1221,7 @@ main (int argc, char** argv, char** envp) {
             pipelineInfo.pViewportState = &viewportState;
             pipelineInfo.pRasterizationState = &rasterizer;
             pipelineInfo.pMultisampleState = &multisampling;
-            pipelineInfo.pDepthStencilState = nullptr;
+            pipelineInfo.pDepthStencilState = &dssci;
             pipelineInfo.pColorBlendState = &colorBlending;
             pipelineInfo.pDynamicState = nullptr;
             pipelineInfo.layout = pipeline.layout;
@@ -1532,9 +1542,12 @@ main (int argc, char** argv, char** envp) {
             rpbi.framebuffer = swapChain.framebuffers[i];
             rpbi.renderArea.offset = {0, 0};
             rpbi.renderArea.extent = swapChain.extent;
-            VkClearValue clear = {0.0f, 0.0f, 0.1f, 1.0f};
-            rpbi.clearValueCount = 1;
-            rpbi.pClearValues = &clear;
+            VkClearValue clear[2] = {};
+            clear[0].color = {0.0f, 0.0f, 0.1f, 1.0f};
+            clear[1].depthStencil = {1.0f, 0};
+
+            rpbi.clearValueCount = 2;
+            rpbi.pClearValues = clear;
             vkCmdBeginRenderPass(
                     commandBuffers[i], &rpbi, VK_SUBPASS_CONTENTS_INLINE
             );
