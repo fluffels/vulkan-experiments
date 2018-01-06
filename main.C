@@ -1294,7 +1294,7 @@ main (int argc, char** argv, char** envp) {
             int height;
             int depth;
             stbi_uc* pixels = stbi_load(
-                "texture.jpg", &width, &height, &depth, STBI_rgb_alpha
+                "chalet.jpg", &width, &height, &depth, STBI_rgb_alpha
             );
             if (!pixels) {
                 LOG(ERROR) << "Could not load texture.";
