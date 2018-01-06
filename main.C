@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 #define GLFW_INCLUDE_VULKAN
@@ -9,6 +10,8 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "easylogging++.h"
@@ -21,7 +24,25 @@ struct Vertex {
     glm::vec3 pos;
     glm::vec3 color;
     glm::vec2 tex;
+
+    bool operator==(const Vertex& other) const {
+        return (
+            (pos == other.pos) &&
+            (color == other.color) &&
+            (tex == other.tex)
+        );
+    }
 };
+
+namespace std {
+    template<> struct hash<Vertex> {
+        size_t operator()(Vertex const& vertex) const {
+            return ((hash<glm::vec3>()(vertex.pos) ^
+                    (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+                    (hash<glm::vec2>()(vertex.tex) << 1);
+        }
+    };
+}
 
 struct VK {
     VkDevice device;
@@ -523,6 +544,7 @@ main (int argc, char** argv, char** envp) {
         if (!result) {
             throw std::runtime_error(err);
         }
+        std::unordered_map<Vertex, uint32_t> unique = {};
         for (const auto& shape: shapes) {
             for (const auto& index: shape.mesh.indices) {
                 Vertex vertex = {};
@@ -536,8 +558,11 @@ main (int argc, char** argv, char** envp) {
                     1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
                 };
                 vertex.color = {1.0f, 1.0f, 1.0f};
-                vertices.push_back(vertex);
-                indices.push_back(indices.size());
+                if (unique.count(vertex) == 0) {
+                    unique[vertex] = static_cast<uint32_t>(vertices.size());
+                    vertices.push_back(vertex);
+                }
+                indices.push_back(unique[vertex]);
             }
         }
     }
