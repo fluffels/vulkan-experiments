@@ -533,7 +533,7 @@ main (int argc, char** argv, char** envp) {
                 };
                 vertex.tex = {
                     attrib.texcoords[2 * index.texcoord_index + 0],
-                    attrib.texcoords[2 * index.texcoord_index + 1]
+                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
                 };
                 vertex.color = {1.0f, 1.0f, 1.0f};
                 vertices.push_back(vertex);
