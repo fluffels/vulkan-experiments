@@ -1651,7 +1651,7 @@ main (int argc, char** argv, char** envp) {
                     10.0f
             );
             /* NOTE(jan): Vulkan's y-axis is inverted relative to OpenGL. */
-            mvp.proj[1][1] = -1;
+            mvp.proj[1][1] *= -1;
 
             /* NOTE(jan): Copy MVP. */
             void* mvp_dst;
