@@ -54,21 +54,8 @@ struct Scene {
     Image depth;
 };
 
-const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f, -0.5f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f}}
-};
-
-const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0,
-    4, 5, 6, 6, 7, 4
-};
+std::vector<Vertex> vertices;
+std::vector<uint32_t> indices;
 
 template<class T> size_t
 vector_size(const std::vector<T>& v) {
@@ -522,6 +509,37 @@ main (int argc, char** argv, char** envp) {
             LOG(DEBUG) << env;
         }
         envp++;
+    }
+
+    LOG(INFO) << "Loading models...";
+    {
+        tinyobj::attrib_t attrib;
+        std::vector<tinyobj::shape_t> shapes;
+        std::vector<tinyobj::material_t> materials;
+        std::string err;
+        auto result = tinyobj::LoadObj(
+            &attrib, &shapes, &materials, &err, "chalet.obj"
+        );
+        if (!result) {
+            throw std::runtime_error(err);
+        }
+        for (const auto& shape: shapes) {
+            for (const auto& index: shape.mesh.indices) {
+                Vertex vertex = {};
+                vertex.pos = {
+                    attrib.vertices[3 * index.vertex_index + 0],
+                    attrib.vertices[3 * index.vertex_index + 1],
+                    attrib.vertices[3 * index.vertex_index + 2]
+                };
+                vertex.tex = {
+                    attrib.texcoords[2 * index.texcoord_index + 0],
+                    attrib.texcoords[2 * index.texcoord_index + 1]
+                };
+                vertex.color = {1.0f, 1.0f, 1.0f};
+                vertices.push_back(vertex);
+                indices.push_back(indices.size());
+            }
+        }
     }
 
     LOG(INFO) << "Initalizing GLFW...";
@@ -1571,7 +1589,7 @@ main (int argc, char** argv, char** envp) {
                     commandBuffers[i], 0, 1, vertex_buffers, offsets
             );
             vkCmdBindIndexBuffer(
-                    commandBuffers[i], scene.indices.b, 0, VK_INDEX_TYPE_UINT16
+                    commandBuffers[i], scene.indices.b, 0, VK_INDEX_TYPE_UINT32
             );
             vkCmdDrawIndexed(
                 commandBuffers[i], static_cast<uint32_t>(indices.size()),
