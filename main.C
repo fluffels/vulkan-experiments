@@ -66,8 +66,8 @@ struct SwapChain {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     VkSurfaceFormatKHR format;
-    std::vector<VkPresentModeKHR> presentModes;
-    VkPresentModeKHR presentMode;
+    std::vector<VkPresentModeKHR> modes;
+    VkPresentModeKHR mode;
     VkExtent2D extent;
     uint32_t length;
     VkSwapchainKHR handle;
@@ -763,17 +763,17 @@ main (int argc, char** argv, char** envp) {
                     device, surface, &presentModeCount, nullptr
             );
             if (presentModeCount > 0) {
-                vk.swap.presentModes.resize(presentModeCount);
+                vk.swap.modes.resize(presentModeCount);
                 vkGetPhysicalDeviceSurfacePresentModesKHR(
                         device, surface, &presentModeCount,
-                        vk.swap.presentModes.data()
+                        vk.swap.modes.data()
                 );
             }
 
             if (requiredExtensionSet.empty() &&
                     deviceFeatures.samplerAnisotropy &&
                     !vk.swap.formats.empty() &&
-                    !vk.swap.presentModes.empty()) {
+                    !vk.swap.modes.empty()) {
                 vkGetPhysicalDeviceQueueFamilyProperties(
                         device, &queueFamilyCount, nullptr
                 );
@@ -908,11 +908,11 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Pick a surface presentation mode. */
         /* NOTE(jan): Default. Guaranteed to be present. */
-        vk.swap.presentMode = VK_PRESENT_MODE_FIFO_KHR;
-        for (const auto& mode: vk.swap.presentModes) {
+        vk.swap.mode = VK_PRESENT_MODE_FIFO_KHR;
+        for (const auto& mode: vk.swap.modes) {
             /* NOTE(jan): This allows us to implement triple buffering. */
             if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-                vk.swap.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+                vk.swap.mode = VK_PRESENT_MODE_MAILBOX_KHR;
                 LOG(INFO) << "Surface supports mailbox presentation mode. "
                           << "Selecting...";
             }
@@ -967,7 +967,7 @@ main (int argc, char** argv, char** envp) {
             cf.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
             cf.preTransform = vk.swap.capabilities.currentTransform;
             cf.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-            cf.presentMode = vk.swap.presentMode;
+            cf.presentMode = vk.swap.mode;
             cf.clipped = VK_TRUE;
             cf.oldSwapchain = VK_NULL_HANDLE;
             uint32_t queueFamilyIndices[] = {
