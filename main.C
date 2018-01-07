@@ -89,6 +89,7 @@ struct SwapChain {
  */
 struct VK {
     VkDevice device;
+    VkInstance h;
     VkPhysicalDevice physical_device;
     Queues queues;
     SwapChain swap;
@@ -159,8 +160,6 @@ const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH = 800;
 
 INITIALIZE_EASYLOGGINGPP
-
-VkInstance instance;
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugReportFlagsEXT flags,
@@ -604,17 +603,17 @@ main (int argc, char** argv, char** envp) {
     LOG(INFO) << "Swap to window context...";
     glfwMakeContextCurrent(window);
 
-    VkApplicationInfo appInfo = {};
-    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "Vk Experiments";
-    appInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
-    appInfo.pEngineName = "No Engine";
-    appInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    VkApplicationInfo ai = {};
+    ai.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    ai.pApplicationName = "Vk Experiments";
+    ai.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
+    ai.pEngineName = "No Engine";
+    ai.engineVersion = VK_MAKE_VERSION(0, 1, 0);
+    ai.apiVersion = VK_API_VERSION_1_0;
 
-    VkInstanceCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pApplicationInfo = &appInfo;
+    VkInstanceCreateInfo ici = {};
+    ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    ici.pApplicationInfo = &ai;
 
     /* NOTE(jan): Debug layers. */
     uint32_t availableLayerCount;
@@ -639,10 +638,10 @@ main (int argc, char** argv, char** envp) {
         }
     }
     if (enableValidationLayers) {
-        createInfo.enabledLayerCount = requestedValidationLayerCount;
-        createInfo.ppEnabledLayerNames = requestedValidationLayers;
+        ici.enabledLayerCount = requestedValidationLayerCount;
+        ici.ppEnabledLayerNames = requestedValidationLayers;
     } else {
-        createInfo.enabledLayerCount = 0;
+        ici.enabledLayerCount = 0;
     }
 
     /* NOTE(jan): Extensions. */
@@ -657,11 +656,11 @@ main (int argc, char** argv, char** envp) {
     if (enableValidationLayers) {
         requestedExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     }
-    createInfo.enabledExtensionCount = static_cast<uint32_t>
+    ici.enabledExtensionCount = static_cast<uint32_t>
         (requestedExtensions.size());
-    createInfo.ppEnabledExtensionNames = requestedExtensions.data();
+    ici.ppEnabledExtensionNames = requestedExtensions.data();
 
-    VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
+    VkResult result = vkCreateInstance(&ici, nullptr, &vk.h);
 
     if (result == VK_ERROR_LAYER_NOT_PRESENT) {
         LOG(ERROR) << "Layer not present.";
@@ -683,13 +682,13 @@ main (int argc, char** argv, char** envp) {
         auto create =
                 (PFN_vkCreateDebugReportCallbackEXT)
                 vkGetInstanceProcAddr(
-                        instance,
+                        vk.h,
                         "vkCreateDebugReportCallbackEXT"
                 );
         if (create == nullptr) {
             LOG(WARNING) << "Could load debug callback creation function";
         } else {
-            VkResult r = create(instance, &cf, nullptr, &callback_debug);
+            VkResult r = create(vk.h, &cf, nullptr, &callback_debug);
             if (r != VK_SUCCESS) {
                 LOG(WARNING) << "Could not create debug callback";
             }
@@ -699,7 +698,7 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Create surface. */
     {
         VkResult r;
-        r = glfwCreateWindowSurface(instance, window, nullptr, &surface);
+        r = glfwCreateWindowSurface(vk.h, window, nullptr, &surface);
         if (r != VK_SUCCESS) {
             LOG(ERROR) << "Could not create surface.";
         }
@@ -708,13 +707,13 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Physical device selection. */
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     uint32_t deviceCount;
-    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+    vkEnumeratePhysicalDevices(vk.h, &deviceCount, nullptr);
     uint32_t queueFamilyCount;
     if (deviceCount == 0) {
         LOG(ERROR) << "No Vulkan devices detected.";
     } else {
         std::vector<VkPhysicalDevice> devices(deviceCount);
-        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+        vkEnumeratePhysicalDevices(vk.h, &deviceCount, devices.data());
         int max_score = -1;
         for (const auto& device: devices) {
             int score = -1;
@@ -1741,11 +1740,11 @@ main (int argc, char** argv, char** envp) {
     auto vkDestroyCallback =
             (PFN_vkDestroyDebugReportCallbackEXT)
             vkGetInstanceProcAddr(
-                    instance,
+                    vk.h,
                     "vkDestroyDebugReportCallbackEXT"
             );
     if (vkDestroyCallback != nullptr) {
-        vkDestroyCallback(instance, callback_debug, nullptr);
+        vkDestroyCallback(vk.h, callback_debug, nullptr);
     }
     vkDestroySemaphore(device, renderFinished, nullptr);
     vkDestroySemaphore(device, imageAvailable, nullptr);
@@ -1779,8 +1778,8 @@ main (int argc, char** argv, char** envp) {
     }
     vkDestroySwapchainKHR(device, vk.swap.h, nullptr);
     vkDestroyDevice(device, nullptr);
-    vkDestroySurfaceKHR(instance, surface, nullptr);
-    vkDestroyInstance(instance, nullptr);
+    vkDestroySurfaceKHR(vk.h, surface, nullptr);
+    vkDestroyInstance(vk.h, nullptr);
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
