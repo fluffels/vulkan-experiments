@@ -47,9 +47,20 @@ namespace std {
     };
 }
 
+struct Queue {
+    VkQueue q;
+    int family_index;
+};
+
+struct Queues {
+    Queue graphics;
+    Queue present;
+};
+
 struct VK {
     VkDevice device;
     VkPhysicalDevice physical_device;
+    Queues queues;
 };
 
 struct {
@@ -137,8 +148,6 @@ bool enableValidationLayers = true;
 
 VkDebugReportCallbackEXT callback_debug;
 VkDevice device = VK_NULL_HANDLE;
-VkQueue graphicsQueue = VK_NULL_HANDLE;
-VkQueue presentationQueue = VK_NULL_HANDLE;
 VkSurfaceKHR surface = VK_NULL_HANDLE;
 
 const int WINDOW_HEIGHT = 600;
@@ -369,8 +378,8 @@ command_one_off_stop_and_submit(VK& vk,
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
 
-    vkQueueSubmit(graphicsQueue, 1, &si, VK_NULL_HANDLE);
-    vkQueueWaitIdle(graphicsQueue);
+    vkQueueSubmit(vk.queues.graphics.q, 1, &si, VK_NULL_HANDLE);
+    vkQueueWaitIdle(vk.queues.graphics.q);
 
     vkFreeCommandBuffers(vk.device, commandPool, 1, &cb);
 }
@@ -700,8 +709,6 @@ main (int argc, char** argv, char** envp) {
     uint32_t deviceCount;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
     uint32_t queueFamilyCount;
-    int graphicsQueueFamilyIndex;
-    int presentationQueueFamilyIndex;
     if (deviceCount == 0) {
         LOG(ERROR) << "No Vulkan devices detected.";
     } else {
@@ -768,8 +775,8 @@ main (int argc, char** argv, char** envp) {
                 vkGetPhysicalDeviceQueueFamilyProperties(
                         device, &queueFamilyCount, queueFamilies.data()
                 );
-                graphicsQueueFamilyIndex = -1;
-                presentationQueueFamilyIndex = -1;
+                vk.queues.graphics.family_index = -1;
+                vk.queues.present.family_index = -1;
                 int i = 0;
                 for (const auto& queueFamily: queueFamilies) {
                     VkBool32 presentSupport = VK_FALSE;
@@ -777,14 +784,14 @@ main (int argc, char** argv, char** envp) {
                             device, i, surface, &presentSupport
                     );
                     if ((queueFamily.queueCount) & presentSupport) {
-                        presentationQueueFamilyIndex = i;
+                        vk.queues.present.family_index = i;
                     }
                     if ((queueFamily.queueCount) &&
                         (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-                        graphicsQueueFamilyIndex = i;
+                        vk.queues.graphics.family_index = i;
                     }
-                    if ((presentationQueueFamilyIndex >= 0) &&
-                        (graphicsQueueFamilyIndex >= 0))
+                    if ((vk.queues.present.family_index >= 0) &&
+                        (vk.queues.graphics.family_index >= 0))
                     {
                         score = 0;
                         if (deviceProperties.deviceType ==
@@ -811,8 +818,8 @@ main (int argc, char** argv, char** envp) {
     } else {
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<int> uniqueQueueFamilyIndices = {
-                graphicsQueueFamilyIndex,
-                presentationQueueFamilyIndex
+                vk.queues.graphics.family_index,
+                vk.queues.present.family_index
         };
         float queuePriority = 1.0f;
         for (int queueFamilyIndex: uniqueQueueFamilyIndices) {
@@ -864,13 +871,13 @@ main (int argc, char** argv, char** envp) {
     if (device != VK_NULL_HANDLE) {
         /* NOTE(jan): Device queues. */
         vkGetDeviceQueue(
-                device, graphicsQueueFamilyIndex, 0, &graphicsQueue
+                device, vk.queues.graphics.family_index, 0, &vk.queues.graphics.q
         );
         vkGetDeviceQueue(
-                device, presentationQueueFamilyIndex, 0, &presentationQueue
+                device, vk.queues.present.family_index, 0, &vk.queues.present.q
         );
-        LOG(INFO) << "Graphics queue: " << graphicsQueue;
-        LOG(INFO) << "Presentation queue: " << presentationQueue;
+        LOG(INFO) << "Graphics queue: " << vk.queues.graphics.q;
+        LOG(INFO) << "Presentation queue: " << vk.queues.present.q;
 
         /* NOTE(jan): Pick a surface format. */
         /* NOTE(jan): Default. */
@@ -958,10 +965,10 @@ main (int argc, char** argv, char** envp) {
             cf.clipped = VK_TRUE;
             cf.oldSwapchain = VK_NULL_HANDLE;
             uint32_t queueFamilyIndices[] = {
-                    static_cast<uint32_t>(graphicsQueueFamilyIndex),
-                    static_cast<uint32_t>(presentationQueueFamilyIndex)
+                    static_cast<uint32_t>(vk.queues.graphics.family_index),
+                    static_cast<uint32_t>(vk.queues.present.family_index)
             };
-            if (graphicsQueueFamilyIndex != presentationQueueFamilyIndex) {
+            if (vk.queues.graphics.family_index != vk.queues.present.family_index) {
                 cf.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
                 cf.queueFamilyIndexCount = 2;
                 cf.pQueueFamilyIndices = queueFamilyIndices;
@@ -1295,7 +1302,7 @@ main (int argc, char** argv, char** envp) {
         {
             VkCommandPoolCreateInfo cf = {};
             cf.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            cf.queueFamilyIndex = graphicsQueueFamilyIndex;
+            cf.queueFamilyIndex = vk.queues.graphics.family_index;
             cf.flags = 0;
             VkResult r = vkCreateCommandPool(
                     device, &cf, nullptr, &commandPool
@@ -1708,7 +1715,7 @@ main (int argc, char** argv, char** envp) {
             submitInfo.signalSemaphoreCount = 1;
             submitInfo.pSignalSemaphores = signalSemaphores;
             VkResult r = vkQueueSubmit(
-                    graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE
+                    vk.queues.graphics.q, 1, &submitInfo, VK_NULL_HANDLE
             );
             if (r != VK_SUCCESS) {
                 LOG(ERROR) << "Could not submit to graphics queue: " << r;
@@ -1726,8 +1733,8 @@ main (int argc, char** argv, char** envp) {
             /* NOTE(jan): For returning VkResults for multiple swap chains. */
             presentInfo.pResults = nullptr;
 
-            vkQueuePresentKHR(presentationQueue, &presentInfo);
-            vkQueueWaitIdle(presentationQueue);
+            vkQueuePresentKHR(vk.queues.present.q, &presentInfo);
+            vkQueueWaitIdle(vk.queues.present.q);
         }
 
         vkDeviceWaitIdle(device);
