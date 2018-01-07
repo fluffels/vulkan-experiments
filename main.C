@@ -28,6 +28,13 @@ struct Buffer {
     VkDeviceMemory m;
 };
 
+struct Image {
+    VkImage i;
+    VkImageView v;
+    VkDeviceMemory m;
+    VkSampler s;
+};
+
 struct Vertex {
     glm::vec3 pos;
     glm::vec3 color;
@@ -69,11 +76,10 @@ struct SwapChain {
     std::vector<VkPresentModeKHR> modes;
     VkPresentModeKHR mode;
     VkExtent2D extent;
-    uint32_t length;
-    VkSwapchainKHR handle;
-    std::vector<VkImage> images;
-    std::vector<VkImageView> imageViews;
-    std::vector<VkFramebuffer> framebuffers;
+    uint32_t l;
+    VkSwapchainKHR h;
+    std::vector<Image> images;
+    std::vector<VkFramebuffer> frames;
 };
 
 /**
@@ -92,13 +98,6 @@ struct MVP {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
-};
-
-struct Image {
-    VkImage i;
-    VkImageView v;
-    VkDeviceMemory m;
-    VkSampler s;
 };
 
 struct Scene {
@@ -946,20 +945,21 @@ main (int argc, char** argv, char** envp) {
                   << vk.swap.extent.height;
 
         /* NOTE(jan): Swap chain length. */
-        vk.swap.length = vk.swap.capabilities.minImageCount + 1;
+        vk.swap.l = vk.swap.capabilities.minImageCount + 1;
         /* NOTE(jan): maxImageCount == 0 means no limit. */
-        if ((vk.swap.capabilities.maxImageCount < vk.swap.length) &&
+        if ((vk.swap.capabilities.maxImageCount < vk.swap.l) &&
                 (vk.swap.capabilities.maxImageCount > 0)) {
-            vk.swap.length = vk.swap.capabilities.maxImageCount;
+            vk.swap.l = vk.swap.capabilities.maxImageCount;
         }
-        LOG(INFO) << "Swap chain length set to " << vk.swap.length;
+        vk.swap.images.resize(vk.swap.l);
+        LOG(INFO) << "Swap chain length set to " << vk.swap.l;
 
         /* NOTE(jan): Create swap chain. */
         {
             VkSwapchainCreateInfoKHR cf = {};
             cf.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
             cf.surface = surface;
-            cf.minImageCount = vk.swap.length;
+            cf.minImageCount = vk.swap.l;
             cf.imageFormat = vk.swap.format.format;
             cf.imageColorSpace = vk.swap.format.colorSpace;
             cf.imageExtent = vk.swap.extent;
@@ -984,28 +984,22 @@ main (int argc, char** argv, char** envp) {
                 cf.pQueueFamilyIndices = nullptr;
             }
             VkResult r;
-            r = vkCreateSwapchainKHR(device, &cf, nullptr, &vk.swap.handle);
+            r = vkCreateSwapchainKHR(device, &cf, nullptr, &vk.swap.h);
             if (r != VK_SUCCESS) {
                 LOG(ERROR) << "Could not create swap chain: " << r;
             }
-            vkGetSwapchainImagesKHR(
-                    device, vk.swap.handle, &vk.swap.length, nullptr
-            );
-            vk.swap.images.resize(vk.swap.length);
-            vkGetSwapchainImagesKHR(
-                    device, vk.swap.handle, &vk.swap.length,
-                    vk.swap.images.data()
-            );
-            LOG(INFO) << "Retrieved "
-                      << vk.swap.length
-                      << " swap chain images.";
+            vkGetSwapchainImagesKHR(device, vk.swap.h, &vk.swap.l, nullptr);
+            VkImage images[vk.swap.l] = {};
+            vkGetSwapchainImagesKHR(device, vk.swap.h, &vk.swap.l, images);
+            LOG(INFO) << "Retrieved " << vk.swap.l << " swap chain images.";
 
             /* NOTE(jan): Swap chain image views. */
-            vk.swap.imageViews.resize(vk.swap.length);
-            for (int i = 0; i < vk.swap.length; i++) {
+            for (int i = 0; i < vk.swap.l; i++) {
+                vk.swap.images[i].i = images[i];
+
                 VkImageViewCreateInfo cf = {};
                 cf.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                cf.image = vk.swap.images[i];
+                cf.image = vk.swap.images[i].i;
                 cf.viewType = VK_IMAGE_VIEW_TYPE_2D;
                 cf.format = vk.swap.format.format;
                 cf.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -1019,7 +1013,7 @@ main (int argc, char** argv, char** envp) {
                 cf.subresourceRange.layerCount = 1;
                 VkResult r;
                 r = vkCreateImageView(
-                        device, &cf, nullptr, &vk.swap.imageViews[i]
+                    device, &cf, nullptr, &vk.swap.images[i].v
                 );
                 if (r != VK_SUCCESS) {
                     LOG(ERROR) << "Could not create image view #" << i;
@@ -1482,10 +1476,10 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Framebuffer. */
         {
-            vk.swap.framebuffers.resize(vk.swap.length);
-            for (size_t i = 0; i < vk.swap.length; i++) {
+            vk.swap.frames.resize(vk.swap.l);
+            for (size_t i = 0; i < vk.swap.l; i++) {
                 VkImageView attachments[] = {
-                    vk.swap.imageViews[i],
+                    vk.swap.images[i].v,
                     scene.depth.v
                 };
                 VkFramebufferCreateInfo cf = {};
@@ -1497,7 +1491,7 @@ main (int argc, char** argv, char** envp) {
                 cf.height = vk.swap.extent.height;
                 cf.layers = 1;
                 VkResult r = vkCreateFramebuffer(
-                    device, &cf, nullptr, &vk.swap.framebuffers[i]
+                    device, &cf, nullptr, &vk.swap.frames[i]
                 );
                 if (r != VK_SUCCESS) {
                     LOG(ERROR) << "Could not create framebuffer.";
@@ -1576,7 +1570,7 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Command buffer creation. */
         {
-            commandBuffers.resize(vk.swap.length);
+            commandBuffers.resize(vk.swap.l);
             VkCommandBufferAllocateInfo i = {};
             i.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
             i.commandPool = commandPool;
@@ -1601,7 +1595,7 @@ main (int argc, char** argv, char** envp) {
             VkRenderPassBeginInfo rpbi = {};
             rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             rpbi.renderPass = pipeline.pass;
-            rpbi.framebuffer = vk.swap.framebuffers[i];
+            rpbi.framebuffer = vk.swap.frames[i];
             rpbi.renderArea.offset = {0, 0};
             rpbi.renderArea.extent = vk.swap.extent;
             VkClearValue clear[2] = {};
@@ -1704,7 +1698,7 @@ main (int argc, char** argv, char** envp) {
 
             uint32_t imageIndex;
             vkAcquireNextImageKHR(
-                    device, vk.swap.handle,
+                    device, vk.swap.h,
                     std::numeric_limits<uint64_t>::max(),
                     imageAvailable, VK_NULL_HANDLE, &imageIndex
             );
@@ -1734,7 +1728,7 @@ main (int argc, char** argv, char** envp) {
             presentInfo.waitSemaphoreCount = 1;
             presentInfo.pWaitSemaphores = signalSemaphores;
 
-            VkSwapchainKHR swapChains[] = {vk.swap.handle};
+            VkSwapchainKHR swapChains[] = {vk.swap.h};
             presentInfo.swapchainCount = 1;
             presentInfo.pSwapchains = swapChains;
             presentInfo.pImageIndices = &imageIndex;
@@ -1776,7 +1770,7 @@ main (int argc, char** argv, char** envp) {
             vk.device, pipeline.descriptorPool, nullptr
     );
     vkDestroyCommandPool(device, commandPool, nullptr);
-    for (const auto& f: vk.swap.framebuffers) {
+    for (const auto& f: vk.swap.frames) {
         vkDestroyFramebuffer(device, f, nullptr);
     }
     vkDestroyPipeline(device, pipeline.handle, nullptr);
@@ -1784,10 +1778,10 @@ main (int argc, char** argv, char** envp) {
     vkDestroyDescriptorSetLayout(
             vk.device, pipeline.descriptorSetLayout, nullptr);
     vkDestroyRenderPass(device, pipeline.pass, nullptr);
-    for (const auto& v: vk.swap.imageViews) {
-        vkDestroyImageView(device, v, nullptr);
+    for (const auto& i: vk.swap.images) {
+        vkDestroyImageView(device, i.v, nullptr);
     }
-    vkDestroySwapchainKHR(device, vk.swap.handle, nullptr);
+    vkDestroySwapchainKHR(device, vk.swap.h, nullptr);
     vkDestroyDevice(device, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
