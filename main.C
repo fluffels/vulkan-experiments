@@ -23,6 +23,11 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
+struct Buffer {
+    VkBuffer b;
+    VkDeviceMemory m;
+};
+
 struct Vertex {
     glm::vec3 pos;
     glm::vec3 color;
@@ -63,15 +68,10 @@ struct VK {
     Queues queues;
 };
 
-struct {
+struct MVP {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
-} mvp;
-
-struct Buffer {
-    VkBuffer b;
-    VkDeviceMemory m;
 };
 
 struct Image {
@@ -83,8 +83,9 @@ struct Image {
 
 struct Scene {
     Buffer indices;
+    Buffer uniforms;
     Buffer vertices;
-    Buffer mvp;
+    MVP mvp;
     Image texture;
     Image depth;
 };
@@ -1332,11 +1333,12 @@ main (int argc, char** argv, char** envp) {
 
         /* NOTE(jan): Uniform buffer. */
         {
-            VkDeviceSize size = sizeof(mvp);
-            scene.mvp = buffer_create(
+            VkDeviceSize size = sizeof(scene.mvp);
+            scene.uniforms = buffer_create(
                 vk,
-                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                 size
             );
         }
@@ -1537,9 +1539,9 @@ main (int argc, char** argv, char** envp) {
             }
 
             VkDescriptorBufferInfo dbi = {};
-            dbi.buffer = scene.mvp.b;
+            dbi.buffer = scene.uniforms.b;
             dbi.offset = 0;
-            dbi.range = sizeof(mvp);
+            dbi.range = sizeof(scene.mvp);
 
             VkDescriptorImageInfo dii = {};
             dii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1669,30 +1671,31 @@ main (int argc, char** argv, char** envp) {
             auto now = std::chrono::high_resolution_clock::now();
             float time = std::chrono::duration<
                     float, std::chrono::seconds::period>(now - start).count();
-            mvp.model = glm::rotate(
+            scene.mvp.model = glm::rotate(
                     glm::mat4(1.0f),
                     time * glm::radians(90.0f),
                     glm::vec3(0.0f, 0.0f, 1.0f)
             );
-            mvp.view = glm::lookAt(
+            scene.mvp.view = glm::lookAt(
                     glm::vec3(2.0f, 2.0f, 2.0f),
                     glm::vec3(0.0f, 0.0f, 0.0f),
                     glm::vec3(0.0f, 0.0f, 1.0f)
             );
-            mvp.proj = glm::perspective(
+            scene.mvp.proj = glm::perspective(
                     glm::radians(45.0f),
                     swapChain.extent.width / (float)swapChain.extent.height,
                     0.1f,
                     10.0f
             );
             /* NOTE(jan): Vulkan's y-axis is inverted relative to OpenGL. */
-            mvp.proj[1][1] *= -1;
+            scene.mvp.proj[1][1] *= -1;
 
             /* NOTE(jan): Copy MVP. */
             void* mvp_dst;
-            vkMapMemory(vk.device, scene.mvp.m, 0, sizeof(mvp), 0, &mvp_dst);
-                memcpy(mvp_dst, &mvp, sizeof(mvp));
-            vkUnmapMemory(vk.device, scene.mvp.m);
+            size_t s = sizeof(scene.mvp);
+            vkMapMemory(vk.device, scene.uniforms.m, 0, s, 0, &mvp_dst);
+                memcpy(mvp_dst, &scene.mvp, s);
+            vkUnmapMemory(vk.device, scene.uniforms.m);
 
             uint32_t imageIndex;
             vkAcquireNextImageKHR(
@@ -1762,8 +1765,8 @@ main (int argc, char** argv, char** envp) {
     vkDestroyBuffer(vk.device, scene.indices.b, nullptr);
     vkFreeMemory(device, scene.vertices.m, nullptr);
     vkDestroyBuffer(device, scene.vertices.b, nullptr);
-    vkFreeMemory(device, scene.mvp.m, nullptr);
-    vkDestroyBuffer(device, scene.mvp.b, nullptr);
+    vkFreeMemory(device, scene.uniforms.m, nullptr);
+    vkDestroyBuffer(device, scene.uniforms.b, nullptr);
     vkDestroyDescriptorPool(
             vk.device, pipeline.descriptorPool, nullptr
     );
