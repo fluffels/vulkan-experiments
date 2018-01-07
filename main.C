@@ -600,13 +600,12 @@ main (int argc, char** argv, char** envp) {
         glfwTerminate();
         return 2;
     }
+    LOG(INFO) << "Swap to window context...";
+    glfwMakeContextCurrent(window);
 
     uint32_t extensionCount = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
     LOG(INFO) << "Found " << extensionCount << " extensions...";
-
-    LOG(INFO) << "Swap to window context...";
-    glfwMakeContextCurrent(window);
 
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
