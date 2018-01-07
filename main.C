@@ -76,6 +76,11 @@ struct SwapChain {
     std::vector<VkFramebuffer> framebuffers;
 };
 
+/**
+ * The VK structure contains all information related to the Vulkan API, logical
+ * and physical devices, and window management.
+ * Its members should be invariant across scenes.
+ */
 struct VK {
     VkDevice device;
     VkPhysicalDevice physical_device;
