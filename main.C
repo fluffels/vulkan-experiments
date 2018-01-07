@@ -600,6 +600,7 @@ main (int argc, char** argv, char** envp) {
         glfwTerminate();
         return 2;
     }
+
     LOG(INFO) << "Swap to window context...";
     glfwMakeContextCurrent(window);
 
