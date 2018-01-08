@@ -984,7 +984,7 @@ main (int argc, char** argv, char** envp) {
                 LOG(ERROR) << "Could not create swap chain: " << r;
             }
             vkGetSwapchainImagesKHR(device, vk.swap.h, &vk.swap.l, nullptr);
-            VkImage images[vk.swap.l] = {};
+            VkImage images[vk.swap.l];
             vkGetSwapchainImagesKHR(device, vk.swap.h, &vk.swap.l, images);
             LOG(INFO) << "Retrieved " << vk.swap.l << " swap chain images.";
 
