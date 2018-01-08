@@ -165,7 +165,7 @@ void
 vk_check_success(VkResult r,
                  const char *msg) {
     if (r != VK_SUCCESS) {
-        throw(msg);
+        throw(std::runtime_error(msg));
     }
 }
 
