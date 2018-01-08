@@ -154,7 +154,6 @@ bool enableValidationLayers = true;
 #endif
 
 VkDebugReportCallbackEXT callback_debug;
-VkDevice device = VK_NULL_HANDLE;
 
 const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH = 800;
@@ -210,19 +209,16 @@ readFile(const std::string& path) {
 }
 
 VkShaderModule
-createShaderModule(const std::vector<char>& code) {
+create_shader_module(VK &vk, const std::vector<char> &code) {
     VkShaderModuleCreateInfo c = {};
     c.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     c.codeSize = code.size();
     c.pCode = reinterpret_cast<const uint32_t*>(code.data());
     VkShaderModule module;
-    VkResult r;
-    r = vkCreateShaderModule(
-            device, &c, nullptr, &module
+    vk_check_success(
+        vkCreateShaderModule(vk.device, &c, nullptr, &module),
+        "Could not create shader module."
     );
-    if (r != VK_SUCCESS) {
-        LOG(ERROR) << "Could not create shader module.";
-    }
     return module;
 }
 
@@ -1115,9 +1111,9 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Create pipeline. */
     {
         auto code = readFile("shaders/triangle/vert.spv");
-        pipeline.vertModule = createShaderModule(code);
+        pipeline.vertModule = create_shader_module(code);
         code = readFile("shaders/triangle/frag.spv");
-        pipeline.fragModule = createShaderModule(code);
+        pipeline.fragModule = create_shader_module(code);
 
         VkPipelineShaderStageCreateInfo vertStageCreateInfo = {};
         vertStageCreateInfo.sType =
