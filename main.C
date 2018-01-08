@@ -130,7 +130,6 @@ struct Pipeline {
     VkDescriptorPool descriptorPool;
     VkDescriptorSet descriptorSet;
 };
-Pipeline pipeline = {};
 
 VkCommandPool commandPool;
 std::vector<VkCommandBuffer> commandBuffers;
@@ -1032,6 +1031,10 @@ main (int argc, char** argv, char** envp) {
              "Could not create image view."
         );
     }
+
+    /* NOTE(jan): The render passes and descriptor sets below start the
+     * pipeline creation process. */
+    Pipeline pipeline = {};
 
     /* NOTE(jan): Render passes. */
     {
