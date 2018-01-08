@@ -138,11 +138,6 @@ std::vector<VkCommandBuffer> commandBuffers;
 VkSemaphore imageAvailable;
 VkSemaphore renderFinished;
 
-const uint32_t requestedValidationLayerCount = 1;
-const char* requestedValidationLayers[requestedValidationLayerCount] = {
-        "VK_LAYER_LUNARG_standard_validation"
-};
-
 const std::vector<const char*> requiredDeviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
@@ -613,39 +608,49 @@ main (int argc, char** argv, char** envp) {
     ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     ici.pApplicationInfo = &ai;
 
-    /* NOTE(jan): Validation layers. */
-    #ifdef NDEBUG
-        bool validation_enabled = false;
-    #else
-        bool validation_enabled = true;
-    #endif
-    uint32_t availableLayerCount;
-    vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
-    VkLayerProperties layerProperties[availableLayerCount];
-    vkEnumerateInstanceLayerProperties(&availableLayerCount, layerProperties);
-    for (int r = 0; r < requestedValidationLayerCount; r++) {
-        auto requestedLayerName = requestedValidationLayers[r];
-        bool found = false;
-        int a = 0;
-        while ((a < availableLayerCount) && (!found)) {
-            auto* availableLayerName = layerProperties[a].layerName;
-            if (strcmp(availableLayerName, requestedLayerName) == 0) {
-                found = true;
+    /* NOTE(jan): Check whether validation layers should be enabled. */
+#ifdef NDEBUG
+    bool validation_enabled = false;
+#else
+    bool validation_enabled = true;
+    std::vector<const char *> layers_requested = {
+        "VK_LAYER_LUNARG_standard_validation"
+    };
+    {
+        uint32_t count;
+        vkEnumerateInstanceLayerProperties(&count, nullptr);
+        VkLayerProperties layers_available[count];
+        vkEnumerateInstanceLayerProperties(&count, layers_available);
+        for (const auto &name_requested: layers_requested) {
+            bool found = false;
+            int a = 0;
+            while ((a < count) && (!found)) {
+                auto *name_available = layers_available[a].layerName;
+                if (strcmp(name_available, name_requested) == 0) {
+                    found = true;
+                }
+                a++;
             }
-            a++;
-        }
-        if (!found) {
-            LOG(ERROR) << "Could not find layer '" << requestedLayerName << "'.";
-            LOG(WARNING) << "Disabling validation layers...";
-            validation_enabled = false;
+            if (!found) {
+                LOG(ERROR) << "Could not find layer '" << name_requested
+                           << "'.";
+                LOG(WARNING) << "Disabling validation layers...";
+                validation_enabled = false;
+                break;
+            }
         }
     }
+#endif
+
+    /* NOTE(jan): Conditionally enable validation layers. */
+#ifndef NDEBUG
     if (validation_enabled) {
-        ici.enabledLayerCount = requestedValidationLayerCount;
-        ici.ppEnabledLayerNames = requestedValidationLayers;
+        ici.enabledLayerCount = layers_requested.size();
+        ici.ppEnabledLayerNames = layers_requested.data();
     } else {
         ici.enabledLayerCount = 0;
     }
+#endif
 
     /* NOTE(jan): Extensions. */
     uint32_t glfwExtensionCount = 0;
@@ -656,9 +661,11 @@ main (int argc, char** argv, char** envp) {
     for (uint32_t i = 0; i < glfwExtensionCount; i++) {
         requestedExtensions.push_back(glfwExtensions[i]);
     }
+#ifndef NDEBUG
     if (validation_enabled) {
         requestedExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     }
+#endif
     ici.enabledExtensionCount = static_cast<uint32_t>
         (requestedExtensions.size());
     ici.ppEnabledExtensionNames = requestedExtensions.data();
@@ -674,6 +681,7 @@ main (int argc, char** argv, char** envp) {
     }
 
     /* NOTE(jan): Debug callback. */
+#ifndef NDEBUG
     VkDebugReportCallbackEXT callback_debug;
     if (validation_enabled) {
         VkDebugReportCallbackCreateInfoEXT cf = {};
@@ -694,6 +702,7 @@ main (int argc, char** argv, char** envp) {
             );
         }
     }
+#endif
 
     /* NOTE(jan): Create surface. */
     vk_check_success(
@@ -837,12 +846,14 @@ main (int argc, char** argv, char** envp) {
         createInfo.enabledExtensionCount =
                 static_cast<uint32_t>(requiredDeviceExtensions.size());
         createInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
+#ifndef NDEBUG
         if (validation_enabled) {
-            createInfo.enabledLayerCount = requestedValidationLayerCount;
-            createInfo.ppEnabledLayerNames = requestedValidationLayers;
+            createInfo.enabledLayerCount = layers_requested.size();
+            createInfo.ppEnabledLayerNames = layers_requested.data();
         } else {
             createInfo.enabledLayerCount = 0;
         }
+#endif
         VkResult r = vkCreateDevice(
             vk.physical_device, &createInfo, nullptr, &vk.device
         );
