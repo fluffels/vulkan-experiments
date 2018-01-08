@@ -139,7 +139,7 @@ VkSemaphore imageAvailable;
 VkSemaphore renderFinished;
 
 const std::vector<const char*> requiredDeviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
 const int WINDOW_HEIGHT = 600;
