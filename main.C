@@ -815,11 +815,12 @@ main (int argc, char** argv, char** envp) {
         }
         break;
     }
-
-    /* NOTE(jan): Logical device. */
     if (physicalDevice == VK_NULL_HANDLE) {
         throw std::runtime_error("No suitable Vulkan devices detected.");
-    } else {
+    }
+
+    /* NOTE(jan): Logical device. */
+    {
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<int> uniqueQueueFamilyIndices = {
                 vk.queues.graphics.family_index,
