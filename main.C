@@ -611,6 +611,7 @@ main (int argc, char** argv, char** envp) {
     LOG(INFO) << "Swap to window context...";
     glfwMakeContextCurrent(window);
 
+    /* NOTE(jan): Start creating Vulkan instance. */
     VkApplicationInfo ai = {};
     ai.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     ai.pApplicationName = "Vk Experiments";
