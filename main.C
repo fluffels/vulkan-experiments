@@ -252,7 +252,7 @@ memory_find_type(const VK& vk,
         }
     }
     if (!found) {
-        LOG(ERROR) << "Suitable buffer memory not found";
+        throw std::runtime_error("Suitable buffer memory not found");
     }
     return memory_type;
 }
