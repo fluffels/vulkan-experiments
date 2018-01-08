@@ -209,7 +209,7 @@ readFile(const std::string& path) {
 }
 
 VkShaderModule
-create_shader_module(VK &vk, const std::vector<char> &code) {
+create_shader_module(VK& vk, const std::vector<char> &code) {
     VkShaderModuleCreateInfo c = {};
     c.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     c.codeSize = code.size();
@@ -845,8 +845,9 @@ main (int argc, char** argv, char** envp) {
         } else {
             createInfo.enabledLayerCount = 0;
         }
-        VkResult r;
-        r = vkCreateDevice(vk.physical_device, &createInfo, nullptr, &device);
+        VkResult r = vkCreateDevice(
+            vk.physical_device, &createInfo, nullptr, &vk.device
+        );
         if (r == VK_ERROR_OUT_OF_HOST_MEMORY) {
             throw std::runtime_error("Out of host memory.");
         } else if (r == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
@@ -859,11 +860,8 @@ main (int argc, char** argv, char** envp) {
             throw std::runtime_error("Too many logical devices.");
         } else if (r == VK_ERROR_DEVICE_LOST) {
             throw std::runtime_error("Device lost.");
-        } else if (r != VK_SUCCESS) {
-            throw std::runtime_error("Could not create physical device.");
-        } else {
-            vk.device = device;
         }
+        vk_check_success(r, "Could not create physical device.");
     }
 
     /* NOTE(jan): Device queues. */
@@ -984,18 +982,17 @@ main (int argc, char** argv, char** envp) {
             cf.queueFamilyIndexCount = 0;
             cf.pQueueFamilyIndices = nullptr;
         }
-        VkResult r;
-        r = vkCreateSwapchainKHR(device, &cf, nullptr, &vk.swap.h);
-        if (r != VK_SUCCESS) {
-            LOG(ERROR) << "Could not create swap chain: " << r;
-        }
+        vk_check_success(
+            vkCreateSwapchainKHR(vk.device, &cf, nullptr, &vk.swap.h),
+            "Could not create swap chain."
+        );
     }
 
     /* NOTE(jan): Swap chain images. */
     {
-        vkGetSwapchainImagesKHR(device, vk.swap.h, &vk.swap.l, nullptr);
+        vkGetSwapchainImagesKHR(vk.device, vk.swap.h, &vk.swap.l, nullptr);
         VkImage images[vk.swap.l];
-        vkGetSwapchainImagesKHR(device, vk.swap.h, &vk.swap.l, images);
+        vkGetSwapchainImagesKHR(vk.device, vk.swap.h, &vk.swap.l, images);
         for (int i = 0; i < vk.swap.l; i++) {
             vk.swap.images[i].i = images[i];
         }
@@ -1019,7 +1016,7 @@ main (int argc, char** argv, char** envp) {
         cf.subresourceRange.baseArrayLayer = 0;
         cf.subresourceRange.layerCount = 1;
         vk_check_success(
-             vkCreateImageView(device, &cf, nullptr, &vk.swap.images[i].v),
+             vkCreateImageView(vk.device, &cf, nullptr, &vk.swap.images[i].v),
              "Could not create image view."
         );
     }
@@ -1076,7 +1073,7 @@ main (int argc, char** argv, char** envp) {
         cf.pDependencies = &dep;
 
         vk_check_success(
-            vkCreateRenderPass(device, &cf, nullptr, &pipeline.pass),
+            vkCreateRenderPass(vk.device, &cf, nullptr, &pipeline.pass),
             "Could not create render pass."
         );
     }
@@ -1111,9 +1108,9 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Create pipeline. */
     {
         auto code = readFile("shaders/triangle/vert.spv");
-        pipeline.vertModule = create_shader_module(code);
+        pipeline.vertModule = create_shader_module(vk, code);
         code = readFile("shaders/triangle/frag.spv");
-        pipeline.fragModule = create_shader_module(code);
+        pipeline.fragModule = create_shader_module(vk, code);
 
         VkPipelineShaderStageCreateInfo vertStageCreateInfo = {};
         vertStageCreateInfo.sType =
@@ -1249,7 +1246,7 @@ main (int argc, char** argv, char** envp) {
         layoutCreateInfo.pPushConstantRanges = nullptr;
         vk_check_success(
             vkCreatePipelineLayout(
-                device, &layoutCreateInfo, nullptr, &pipeline.layout
+                vk.device, &layoutCreateInfo, nullptr, &pipeline.layout
             ),
             "Could not create pipeline layout."
         );
@@ -1286,14 +1283,14 @@ main (int argc, char** argv, char** envp) {
 
         vk_check_success(
             vkCreateGraphicsPipelines(
-                device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
+                vk.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
                 &pipeline.handle
             ),
             "Could not create graphics pipeline."
         );
 
-        vkDestroyShaderModule(device, pipeline.fragModule, nullptr);
-        vkDestroyShaderModule(device, pipeline.vertModule, nullptr);
+        vkDestroyShaderModule(vk.device, pipeline.fragModule, nullptr);
+        vkDestroyShaderModule(vk.device, pipeline.vertModule, nullptr);
     }
 
     /* NOTE(jan): Command pool creation. */
@@ -1303,7 +1300,7 @@ main (int argc, char** argv, char** envp) {
         cf.queueFamilyIndex = vk.queues.graphics.family_index;
         cf.flags = 0;
         vk_check_success(
-            vkCreateCommandPool(device, &cf, nullptr, &commandPool),
+            vkCreateCommandPool(vk.device, &cf, nullptr, &commandPool),
             "Could not create command pool."
         );
     }
@@ -1312,8 +1309,8 @@ main (int argc, char** argv, char** envp) {
     {
         VkDeviceSize size = vector_size(vertices);
         scene.vertices = buffer_create_and_initialize(
-                vk, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size,
-                (void *) vertices.data()
+            vk, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size,
+            (void *) vertices.data()
         );
     }
 
@@ -1485,12 +1482,12 @@ main (int argc, char** argv, char** envp) {
             cf.width = vk.swap.extent.width;
             cf.height = vk.swap.extent.height;
             cf.layers = 1;
-            VkResult r = vkCreateFramebuffer(
-                device, &cf, nullptr, &vk.swap.frames[i]
+            vk_check_success(
+                vkCreateFramebuffer(
+                    vk.device, &cf, nullptr, &vk.swap.frames[i]
+                ),
+                "Could not create framebuffer."
             );
-            if (r != VK_SUCCESS) {
-                LOG(ERROR) << "Could not create framebuffer.";
-            }
         }
     }
 
@@ -1570,7 +1567,7 @@ main (int argc, char** argv, char** envp) {
         i.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         i.commandBufferCount = (uint32_t)commandBuffers.size();
         vk_check_success(
-            vkAllocateCommandBuffers(device, &i, commandBuffers.data()),
+            vkAllocateCommandBuffers(vk.device, &i, commandBuffers.data()),
             "Could not allocate command buffers."
         );
     }
@@ -1636,11 +1633,11 @@ main (int argc, char** argv, char** envp) {
         VkResult result;
         bool success;
         result = vkCreateSemaphore(
-                device, &sci, nullptr, &imageAvailable
+            vk.device, &sci, nullptr, &imageAvailable
         );
         success = result == VK_SUCCESS;
         result = vkCreateSemaphore(
-                device, &sci, nullptr, &renderFinished
+            vk.device, &sci, nullptr, &renderFinished
         );
         success = success && (result == VK_SUCCESS);
         if (!success) {
@@ -1657,22 +1654,22 @@ main (int argc, char** argv, char** envp) {
         static auto start = std::chrono::high_resolution_clock::now();
         auto now = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<
-                float, std::chrono::seconds::period>(now - start).count();
+            float, std::chrono::seconds::period>(now - start).count();
         scene.mvp.model = glm::rotate(
-                glm::mat4(1.0f),
-                time * glm::radians(90.0f),
-                glm::vec3(0.0f, 0.0f, 1.0f)
+            glm::mat4(1.0f),
+            time * glm::radians(90.0f),
+            glm::vec3(0.0f, 0.0f, 1.0f)
         );
         scene.mvp.view = glm::lookAt(
-                glm::vec3(2.0f, 2.0f, 2.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 0.0f, 1.0f)
+            glm::vec3(2.0f, 2.0f, 2.0f),
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 0.0f, 1.0f)
         );
         scene.mvp.proj = glm::perspective(
-                glm::radians(45.0f),
-                vk.swap.extent.width / (float)vk.swap.extent.height,
-                0.1f,
-                10.0f
+            glm::radians(45.0f),
+            vk.swap.extent.width / (float)vk.swap.extent.height,
+            0.1f,
+            10.0f
         );
         /* NOTE(jan): Vulkan's y-axis is inverted relative to OpenGL. */
         scene.mvp.proj[1][1] *= -1;
@@ -1686,9 +1683,9 @@ main (int argc, char** argv, char** envp) {
 
         uint32_t imageIndex;
         vkAcquireNextImageKHR(
-                device, vk.swap.h,
-                std::numeric_limits<uint64_t>::max(),
-                imageAvailable, VK_NULL_HANDLE, &imageIndex
+            vk.device, vk.swap.h,
+            std::numeric_limits<uint64_t>::max(),
+            imageAvailable, VK_NULL_HANDLE, &imageIndex
         );
 
         VkSubmitInfo submitInfo = {};
@@ -1696,8 +1693,9 @@ main (int argc, char** argv, char** envp) {
         VkSemaphore waitSemaphores[] = {imageAvailable};
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
-        VkPipelineStageFlags waitStages[] =
-                {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        VkPipelineStageFlags waitStages[] = {
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+        };
         submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
@@ -1728,7 +1726,7 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Wait for everything to complete before we start destroying
      * stuff. */
     LOG(INFO) << "Received exit request. Completing in-progress frames...";
-    vkDeviceWaitIdle(device);
+    vkDeviceWaitIdle(vk.device);
 
     /* NOTE(jan): Clean up Vulkan objects. */
     LOG(INFO) << "Cleaning up...";
@@ -1741,8 +1739,8 @@ main (int argc, char** argv, char** envp) {
     if (vkDestroyCallback != nullptr) {
         vkDestroyCallback(vk.h, callback_debug, nullptr);
     }
-    vkDestroySemaphore(device, renderFinished, nullptr);
-    vkDestroySemaphore(device, imageAvailable, nullptr);
+    vkDestroySemaphore(vk.device, renderFinished, nullptr);
+    vkDestroySemaphore(vk.device, imageAvailable, nullptr);
     vkDestroyImageView(vk.device, scene.depth.v, nullptr);
     vkFreeMemory(vk.device, scene.depth.m, nullptr);
     vkDestroyImage(vk.device, scene.depth.i, nullptr);
@@ -1752,28 +1750,28 @@ main (int argc, char** argv, char** envp) {
     vkFreeMemory(vk.device, scene.texture.m, nullptr);
     vkFreeMemory(vk.device, scene.indices.m, nullptr);
     vkDestroyBuffer(vk.device, scene.indices.b, nullptr);
-    vkFreeMemory(device, scene.vertices.m, nullptr);
-    vkDestroyBuffer(device, scene.vertices.b, nullptr);
-    vkFreeMemory(device, scene.uniforms.m, nullptr);
-    vkDestroyBuffer(device, scene.uniforms.b, nullptr);
+    vkFreeMemory(vk.device, scene.vertices.m, nullptr);
+    vkDestroyBuffer(vk.device, scene.vertices.b, nullptr);
+    vkFreeMemory(vk.device, scene.uniforms.m, nullptr);
+    vkDestroyBuffer(vk.device, scene.uniforms.b, nullptr);
     vkDestroyDescriptorPool(
         vk.device, pipeline.descriptorPool, nullptr
     );
-    vkDestroyCommandPool(device, commandPool, nullptr);
+    vkDestroyCommandPool(vk.device, commandPool, nullptr);
     for (const auto& f: vk.swap.frames) {
-        vkDestroyFramebuffer(device, f, nullptr);
+        vkDestroyFramebuffer(vk.device, f, nullptr);
     }
-    vkDestroyPipeline(device, pipeline.handle, nullptr);
-    vkDestroyPipelineLayout(device, pipeline.layout, nullptr);
+    vkDestroyPipeline(vk.device, pipeline.handle, nullptr);
+    vkDestroyPipelineLayout(vk.device, pipeline.layout, nullptr);
     vkDestroyDescriptorSetLayout(
         vk.device, pipeline.descriptorSetLayout, nullptr
     );
-    vkDestroyRenderPass(device, pipeline.pass, nullptr);
+    vkDestroyRenderPass(vk.device, pipeline.pass, nullptr);
     for (const auto& i: vk.swap.images) {
-        vkDestroyImageView(device, i.v, nullptr);
+        vkDestroyImageView(vk.device, i.v, nullptr);
     }
-    vkDestroySwapchainKHR(device, vk.swap.h, nullptr);
-    vkDestroyDevice(device, nullptr);
+    vkDestroySwapchainKHR(vk.device, vk.swap.h, nullptr);
+    vkDestroyDevice(vk.device, nullptr);
     vkDestroySurfaceKHR(vk.h, vk.surface, nullptr);
     vkDestroyInstance(vk.h, nullptr);
 
