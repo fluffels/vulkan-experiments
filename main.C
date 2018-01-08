@@ -83,7 +83,6 @@ struct SwapChain {
     std::vector<VkCommandBuffer> command_buffers;
     VkSemaphore image_available;
     VkSemaphore render_finished;
-
 };
 
 /**
