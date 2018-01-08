@@ -147,12 +147,6 @@ const std::vector<const char*> requiredDeviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-#ifdef NDEBUG
-bool enableValidationLayers = false;
-#else
-bool enableValidationLayers = true;
-#endif
-
 const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH = 800;
 
@@ -620,6 +614,11 @@ main (int argc, char** argv, char** envp) {
     ici.pApplicationInfo = &ai;
 
     /* NOTE(jan): Validation layers. */
+    #ifdef NDEBUG
+        bool validation_enabled = false;
+    #else
+        bool validation_enabled = true;
+    #endif
     uint32_t availableLayerCount;
     vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
     VkLayerProperties layerProperties[availableLayerCount];
@@ -638,10 +637,10 @@ main (int argc, char** argv, char** envp) {
         if (!found) {
             LOG(ERROR) << "Could not find layer '" << requestedLayerName << "'.";
             LOG(WARNING) << "Disabling validation layers...";
-            enableValidationLayers = false;
+            validation_enabled = false;
         }
     }
-    if (enableValidationLayers) {
+    if (validation_enabled) {
         ici.enabledLayerCount = requestedValidationLayerCount;
         ici.ppEnabledLayerNames = requestedValidationLayers;
     } else {
@@ -657,7 +656,7 @@ main (int argc, char** argv, char** envp) {
     for (uint32_t i = 0; i < glfwExtensionCount; i++) {
         requestedExtensions.push_back(glfwExtensions[i]);
     }
-    if (enableValidationLayers) {
+    if (validation_enabled) {
         requestedExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     }
     ici.enabledExtensionCount = static_cast<uint32_t>
@@ -676,7 +675,7 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Debug callback. */
     VkDebugReportCallbackEXT callback_debug;
-    if (enableValidationLayers) {
+    if (validation_enabled) {
         VkDebugReportCallbackCreateInfoEXT cf = {};
         cf.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
         cf.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
@@ -838,7 +837,7 @@ main (int argc, char** argv, char** envp) {
         createInfo.enabledExtensionCount =
                 static_cast<uint32_t>(requiredDeviceExtensions.size());
         createInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
-        if (enableValidationLayers) {
+        if (validation_enabled) {
             createInfo.enabledLayerCount = requestedValidationLayerCount;
             createInfo.ppEnabledLayerNames = requestedValidationLayers;
         } else {
