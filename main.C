@@ -710,13 +710,12 @@ main (int argc, char** argv, char** envp) {
     );
 
     /* NOTE(jan): Physical device selection. */
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     uint32_t deviceCount;
     vkEnumeratePhysicalDevices(vk.h, &deviceCount, nullptr);
-    uint32_t queueFamilyCount;
     if (deviceCount == 0) {
         throw std::runtime_error("No Vulkan devices detected.");
     }
+    uint32_t queueFamilyCount;
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(vk.h, &deviceCount, devices.data());
     int max_score = -1;
@@ -810,12 +809,12 @@ main (int argc, char** argv, char** envp) {
         }
         LOG(INFO) << "Device '" << device << "' scored at " << score;
         if (score > max_score) {
-            physicalDevice = device;
+            vk.physical_device = device;
             vk.physical_device = device;
         }
         break;
     }
-    if (physicalDevice == VK_NULL_HANDLE) {
+    if (vk.physical_device == VK_NULL_HANDLE) {
         throw std::runtime_error("No suitable Vulkan devices detected.");
     }
 
@@ -853,7 +852,7 @@ main (int argc, char** argv, char** envp) {
             createInfo.enabledLayerCount = 0;
         }
         VkResult r;
-        r = vkCreateDevice(physicalDevice, &createInfo, nullptr, &device);
+        r = vkCreateDevice(vk.physical_device, &createInfo, nullptr, &device);
         if (r == VK_ERROR_OUT_OF_HOST_MEMORY) {
             LOG(ERROR) << "Out of host memory.";
         } else if (r == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
