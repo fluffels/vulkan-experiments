@@ -1110,7 +1110,7 @@ main (int argc, char** argv, char** envp) {
         frag.module = pipeline.frag;
         frag.pName = "main";
 
-        VkPipelineShaderStageCreateInfo stages[] = {
+        std::vector<VkPipelineShaderStageCreateInfo> stages = {
             vert,
             geom,
             frag
@@ -1238,8 +1238,8 @@ main (int argc, char** argv, char** envp) {
         VkGraphicsPipelineCreateInfo pipelineInfo = {};
         pipelineInfo.sType =
                 VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.stageCount = 3;
-        pipelineInfo.pStages = stages;
+        pipelineInfo.stageCount = stages.size();
+        pipelineInfo.pStages = stages.data();
         pipelineInfo.pVertexInputState = &visci;
         pipelineInfo.pInputAssemblyState = &inputAssembly;
         pipelineInfo.pViewportState = &viewportState;
