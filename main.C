@@ -91,6 +91,7 @@ struct VK {
     VkDevice device;
     VkInstance h;
     VkPhysicalDevice physical_device;
+    VkSurfaceKHR surface;
     Queues queues;
     SwapChain swap;
 };
@@ -154,7 +155,6 @@ bool enableValidationLayers = true;
 
 VkDebugReportCallbackEXT callback_debug;
 VkDevice device = VK_NULL_HANDLE;
-VkSurfaceKHR surface = VK_NULL_HANDLE;
 
 const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH = 800;
@@ -698,7 +698,7 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Create surface. */
     {
         VkResult r;
-        r = glfwCreateWindowSurface(vk.h, window, nullptr, &surface);
+        r = glfwCreateWindowSurface(vk.h, window, nullptr, &vk.surface);
         if (r != VK_SUCCESS) {
             LOG(ERROR) << "Could not create surface.";
         }
@@ -739,27 +739,27 @@ main (int argc, char** argv, char** envp) {
             }
 
             vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-                    device, surface, &vk.swap.capabilities
+                    device, vk.surface, &vk.swap.capabilities
             );
             uint32_t formatCount;
             vkGetPhysicalDeviceSurfaceFormatsKHR(
-                    device, surface, &formatCount, nullptr
+                    device, vk.surface, &formatCount, nullptr
             );
             if (formatCount > 0) {
                 vk.swap.formats.resize(formatCount);
                 vkGetPhysicalDeviceSurfaceFormatsKHR(
-                        device, surface, &formatCount,
+                        device, vk.surface, &formatCount,
                         vk.swap.formats.data()
                 );
             }
             uint32_t presentModeCount;
             vkGetPhysicalDeviceSurfacePresentModesKHR(
-                    device, surface, &presentModeCount, nullptr
+                    device, vk.surface, &presentModeCount, nullptr
             );
             if (presentModeCount > 0) {
                 vk.swap.modes.resize(presentModeCount);
                 vkGetPhysicalDeviceSurfacePresentModesKHR(
-                        device, surface, &presentModeCount,
+                        device, vk.surface, &presentModeCount,
                         vk.swap.modes.data()
                 );
             }
@@ -781,7 +781,7 @@ main (int argc, char** argv, char** envp) {
                 for (const auto& queueFamily: queueFamilies) {
                     VkBool32 presentSupport = VK_FALSE;
                     vkGetPhysicalDeviceSurfaceSupportKHR(
-                            device, i, surface, &presentSupport
+                            device, i, vk.surface, &presentSupport
                     );
                     if ((queueFamily.queueCount) & presentSupport) {
                         vk.queues.present.family_index = i;
@@ -953,7 +953,7 @@ main (int argc, char** argv, char** envp) {
         {
             VkSwapchainCreateInfoKHR cf = {};
             cf.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-            cf.surface = surface;
+            cf.surface = vk.surface;
             cf.minImageCount = vk.swap.l;
             cf.imageFormat = vk.swap.format.format;
             cf.imageColorSpace = vk.swap.format.colorSpace;
@@ -1778,7 +1778,7 @@ main (int argc, char** argv, char** envp) {
     }
     vkDestroySwapchainKHR(device, vk.swap.h, nullptr);
     vkDestroyDevice(device, nullptr);
-    vkDestroySurfaceKHR(vk.h, surface, nullptr);
+    vkDestroySurfaceKHR(vk.h, vk.surface, nullptr);
     vkDestroyInstance(vk.h, nullptr);
     glfwDestroyWindow(window);
     glfwTerminate();
