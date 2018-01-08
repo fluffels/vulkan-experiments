@@ -619,7 +619,7 @@ main (int argc, char** argv, char** envp) {
     ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     ici.pApplicationInfo = &ai;
 
-    /* NOTE(jan): Debug layers. */
+    /* NOTE(jan): Validation layers. */
     uint32_t availableLayerCount;
     vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
     VkLayerProperties layerProperties[availableLayerCount];
