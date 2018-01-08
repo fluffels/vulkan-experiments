@@ -542,37 +542,27 @@ main (int argc, char** argv, char** envp) {
         envp++;
     }
 
-    LOG(INFO) << "Loading models...";
+    LOG(INFO) << "Generating model...";
     {
-        tinyobj::attrib_t attrib;
-        std::vector<tinyobj::shape_t> shapes;
-        std::vector<tinyobj::material_t> materials;
-        std::string err;
-        auto result = tinyobj::LoadObj(
-            &attrib, &shapes, &materials, &err, "chalet.obj"
-        );
-        if (!result) {
-            throw std::runtime_error(err);
-        }
-        std::unordered_map<Vertex, uint32_t> unique = {};
-        for (const auto& shape: shapes) {
-            for (const auto& index: shape.mesh.indices) {
+        for (int z = 0; z < 10; z++) {
+            for (int x = 0; x < 10; x++) {
                 Vertex vertex = {};
                 vertex.pos = {
-                    attrib.vertices[3 * index.vertex_index + 0],
-                    attrib.vertices[3 * index.vertex_index + 1],
-                    attrib.vertices[3 * index.vertex_index + 2]
+                    x / 10.f,
+                    0.0f,
+                    z / 10.f
                 };
                 vertex.tex = {
-                    attrib.texcoords[2 * index.texcoord_index + 0],
-                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+                    0.0f,
+                    0.0f
                 };
-                vertex.color = {1.0f, 1.0f, 1.0f};
-                if (unique.count(vertex) == 0) {
-                    unique[vertex] = static_cast<uint32_t>(vertices.size());
-                    vertices.push_back(vertex);
-                }
-                indices.push_back(unique[vertex]);
+                vertex.color = {
+                    1.0f,
+                    1.0f,
+                    1.0f
+                };
+                indices.push_back(vertices.size());
+                vertices.push_back(vertex);
             }
         }
     }
@@ -1177,7 +1167,7 @@ main (int argc, char** argv, char** envp) {
         VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
         inputAssembly.sType =
                 VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
         VkViewport viewport = {};
@@ -1672,14 +1662,10 @@ main (int argc, char** argv, char** envp) {
         auto now = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<
             float, std::chrono::seconds::period>(now - start).count();
-        scene.mvp.model = glm::rotate(
-            glm::mat4(1.0f),
-            time * glm::radians(90.0f),
-            glm::vec3(0.0f, 0.0f, 1.0f)
-        );
+        scene.mvp.model = glm::mat4(1.0f);
         scene.mvp.view = glm::lookAt(
-            glm::vec3(2.0f, 2.0f, 2.0f),
-            glm::vec3(0.0f, 0.0f, 0.0f),
+            glm::vec3(0.5f, -1.5f, 0.5f),
+            glm::vec3(0.5f, 0.0f, 0.5f),
             glm::vec3(0.0f, 0.0f, 1.0f)
         );
         scene.mvp.proj = glm::perspective(
