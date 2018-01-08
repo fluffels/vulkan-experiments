@@ -684,17 +684,13 @@ main (int argc, char** argv, char** envp) {
     if (enableValidationLayers) {
         VkDebugReportCallbackCreateInfoEXT cf = {};
         cf.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
-        cf.flags =
-                VK_DEBUG_REPORT_ERROR_BIT_EXT |
-                VK_DEBUG_REPORT_WARNING_BIT_EXT |
-                VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+        cf.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
+                   VK_DEBUG_REPORT_WARNING_BIT_EXT |
+                   VK_DEBUG_REPORT_DEBUG_BIT_EXT;
         cf.pfnCallback = debugCallback;
         auto create =
-                (PFN_vkCreateDebugReportCallbackEXT)
-                vkGetInstanceProcAddr(
-                        vk.h,
-                        "vkCreateDebugReportCallbackEXT"
-                );
+            (PFN_vkCreateDebugReportCallbackEXT)
+            vkGetInstanceProcAddr(vk.h, "vkCreateDebugReportCallbackEXT");
         if (create == nullptr) {
             LOG(WARNING) << "Could load debug callback creation function";
         } else {
