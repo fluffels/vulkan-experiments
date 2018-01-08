@@ -153,8 +153,6 @@ bool enableValidationLayers = false;
 bool enableValidationLayers = true;
 #endif
 
-VkDebugReportCallbackEXT callback_debug;
-
 const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH = 800;
 
@@ -677,6 +675,7 @@ main (int argc, char** argv, char** envp) {
     }
 
     /* NOTE(jan): Debug callback. */
+    VkDebugReportCallbackEXT callback_debug;
     if (enableValidationLayers) {
         VkDebugReportCallbackCreateInfoEXT cf = {};
         cf.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
