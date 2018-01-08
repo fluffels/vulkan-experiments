@@ -715,7 +715,7 @@ main (int argc, char** argv, char** envp) {
     vkEnumeratePhysicalDevices(vk.h, &deviceCount, nullptr);
     uint32_t queueFamilyCount;
     if (deviceCount == 0) {
-        throw("No Vulkan devices detected.");
+        throw std::runtime_error("No Vulkan devices detected.");
     }
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(vk.h, &deviceCount, devices.data());
@@ -818,7 +818,7 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Logical device. */
     if (physicalDevice == VK_NULL_HANDLE) {
-        throw("No suitable Vulkan devices detected.");
+        throw std::runtime_error("No suitable Vulkan devices detected.");
     } else {
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<int> uniqueQueueFamilyIndices = {
