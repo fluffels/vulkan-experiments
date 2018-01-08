@@ -14,6 +14,12 @@ add_custom_target(
 )
 add_dependencies(main vert.spv)
 add_custom_target(
+        geom.spv
+        WORKING_DIRECTORY shaders/triangle/
+        COMMAND $ENV{VULKAN_SDK}/bin/glslangValidator -V shader.geom
+)
+add_dependencies(main geom.spv)
+add_custom_target(
         frag.spv
         WORKING_DIRECTORY shaders/triangle/
         COMMAND $ENV{VULKAN_SDK}/bin/glslangValidator -V shader.frag

@@ -8,12 +8,10 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
-#include <glm/gtx/hash.hpp>
 
 #include "easylogging++.h"
 
@@ -37,27 +35,7 @@ struct Image {
 
 struct Vertex {
     glm::vec3 pos;
-    glm::vec3 color;
-    glm::vec2 tex;
-
-    bool operator==(const Vertex& other) const {
-        return (
-            (pos == other.pos) &&
-            (color == other.color) &&
-            (tex == other.tex)
-        );
-    }
 };
-
-namespace std {
-    template<> struct hash<Vertex> {
-        size_t operator()(Vertex const& vertex) const {
-            return ((hash<glm::vec3>()(vertex.pos) ^
-                    (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-                    (hash<glm::vec2>()(vertex.tex) << 1);
-        }
-    };
-}
 
 struct Queue {
     VkQueue q;
@@ -124,8 +102,9 @@ vector_size(const std::vector<T>& v) {
 }
 
 struct Pipeline {
-    VkShaderModule vertModule;
-    VkShaderModule fragModule;
+    VkShaderModule vert;
+    VkShaderModule frag;
+    VkShaderModule geom;
     VkPipelineLayout layout;
     VkRenderPass pass;
     VkPipeline handle;
@@ -552,15 +531,6 @@ main (int argc, char** argv, char** envp) {
                     0.0f,
                     z / 10.f
                 };
-                vertex.tex = {
-                    0.0f,
-                    0.0f
-                };
-                vertex.color = {
-                    1.0f,
-                    1.0f,
-                    1.0f
-                };
                 indices.push_back(vertices.size());
                 vertices.push_back(vertex);
             }
@@ -760,6 +730,7 @@ main (int argc, char** argv, char** envp) {
             }
 
             if (extensions_required.empty() &&
+                    features.geometryShader &&
                     features.samplerAnisotropy &&
                     !vk.swap.formats.empty() &&
                     !vk.swap.modes.empty()) {
@@ -826,6 +797,7 @@ main (int argc, char** argv, char** envp) {
             queueCreateInfos.push_back(cf);
         }
         VkPhysicalDeviceFeatures features = {};
+        features.geometryShader = VK_TRUE;
         features.samplerAnisotropy = VK_TRUE;
         VkDeviceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -1087,7 +1059,7 @@ main (int argc, char** argv, char** envp) {
         bindings[0].binding = 0;
         bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[0].descriptorCount = 1;
-        bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        bindings[0].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT;
         bindings[0].pImmutableSamplers = nullptr;
         bindings[1].binding = 1;
         bindings[1].descriptorCount = 1;
@@ -1111,30 +1083,37 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Create pipeline. */
     {
         auto code = read_file("shaders/triangle/vert.spv");
-        pipeline.vertModule = create_shader_module(vk, code);
+        pipeline.vert = create_shader_module(vk, code);
         code = read_file("shaders/triangle/frag.spv");
-        pipeline.fragModule = create_shader_module(vk, code);
+        pipeline.frag = create_shader_module(vk, code);
+        code = read_file("shaders/triangle/geom.spv");
+        pipeline.geom = create_shader_module(vk, code);
 
-        VkPipelineShaderStageCreateInfo vertStageCreateInfo = {};
-        vertStageCreateInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertStageCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertStageCreateInfo.module = pipeline.vertModule;
-        vertStageCreateInfo.pName = "main";
+        VkPipelineShaderStageCreateInfo vert = {};
+        vert.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vert.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vert.module = pipeline.vert;
+        vert.pName = "main";
         /* NOTE(jan): Below would allow us to customize behaviour at
          * compile time. */
         // vertStageCreateInfo.pSpecializationInfo = ;
 
-        VkPipelineShaderStageCreateInfo fragStageCreateInfo = {};
-        fragStageCreateInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragStageCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragStageCreateInfo.module = pipeline.fragModule;
-        fragStageCreateInfo.pName = "main";
+        VkPipelineShaderStageCreateInfo geom = {};
+        geom.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        geom.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+        geom.module = pipeline.geom;
+        geom.pName = "main";
+
+        VkPipelineShaderStageCreateInfo frag = {};
+        frag.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        frag.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        frag.module = pipeline.frag;
+        frag.pName = "main";
 
         VkPipelineShaderStageCreateInfo stages[] = {
-                vertStageCreateInfo,
-                fragStageCreateInfo
+            vert,
+            geom,
+            frag
         };
 
         VkVertexInputBindingDescription vibd = {};
@@ -1142,26 +1121,18 @@ main (int argc, char** argv, char** envp) {
         vibd.stride = sizeof(Vertex);
         vibd.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-        VkVertexInputAttributeDescription viads[3] = {};
+        VkVertexInputAttributeDescription viads[1] = {};
         viads[0].binding = 0;
         viads[0].location = 0;
         viads[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         viads[0].offset = offsetof(Vertex, pos);
-        viads[1].binding = 0;
-        viads[1].location = 1;
-        viads[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        viads[1].offset = offsetof(Vertex, color);
-        viads[2].binding = 0;
-        viads[2].location = 2;
-        viads[2].format = VK_FORMAT_R32G32_SFLOAT;
-        viads[2].offset = offsetof(Vertex, tex);
 
         VkPipelineVertexInputStateCreateInfo visci = {};
         visci.sType =
                 VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         visci.vertexBindingDescriptionCount = 1;
         visci.pVertexBindingDescriptions = &vibd;
-        visci.vertexAttributeDescriptionCount = 3;
+        visci.vertexAttributeDescriptionCount = 1;
         visci.pVertexAttributeDescriptions = viads;
 
         VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
@@ -1198,7 +1169,7 @@ main (int argc, char** argv, char** envp) {
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth = 1.0f;
-        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+        rasterizer.cullMode = VK_CULL_MODE_NONE;
         rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterizer.depthBiasEnable = VK_FALSE;
         rasterizer.depthBiasConstantFactor = 0.0f;
@@ -1267,7 +1238,7 @@ main (int argc, char** argv, char** envp) {
         VkGraphicsPipelineCreateInfo pipelineInfo = {};
         pipelineInfo.sType =
                 VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.stageCount = 2;
+        pipelineInfo.stageCount = 3;
         pipelineInfo.pStages = stages;
         pipelineInfo.pVertexInputState = &visci;
         pipelineInfo.pInputAssemblyState = &inputAssembly;
@@ -1292,8 +1263,9 @@ main (int argc, char** argv, char** envp) {
             "Could not create graphics pipeline."
         );
 
-        vkDestroyShaderModule(vk.device, pipeline.fragModule, nullptr);
-        vkDestroyShaderModule(vk.device, pipeline.vertModule, nullptr);
+        vkDestroyShaderModule(vk.device, pipeline.frag, nullptr);
+        vkDestroyShaderModule(vk.device, pipeline.geom, nullptr);
+        vkDestroyShaderModule(vk.device, pipeline.vert, nullptr);
     }
 
     /* NOTE(jan): Command pool creation. */
@@ -1595,7 +1567,7 @@ main (int argc, char** argv, char** envp) {
         rpbi.renderArea.offset = {0, 0};
         rpbi.renderArea.extent = vk.swap.extent;
         VkClearValue clear[2] = {};
-        clear[0].color = {0.0f, 0.0f, 0.1f, 1.0f};
+        clear[0].color = {1.0f, 1.0f, 1.1f, 1.0f};
         clear[1].depthStencil = {1.0f, 0};
         rpbi.clearValueCount = 2;
         rpbi.pClearValues = clear;
