@@ -854,26 +854,26 @@ main (int argc, char** argv, char** envp) {
         VkResult r;
         r = vkCreateDevice(vk.physical_device, &createInfo, nullptr, &device);
         if (r == VK_ERROR_OUT_OF_HOST_MEMORY) {
-            LOG(ERROR) << "Out of host memory.";
+            throw std::runtime_error("Out of host memory.");
         } else if (r == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-            LOG(ERROR) << "Out of device memory.";
+            throw std::runtime_error("Out of device memory.");
         } else if (r == VK_ERROR_EXTENSION_NOT_PRESENT) {
-            LOG(ERROR) << "Extension not present.";
+            throw std::runtime_error("Extension not present.");
         } else if (r == VK_ERROR_FEATURE_NOT_PRESENT) {
-            LOG(ERROR) << "Feature not present.";
+            throw std::runtime_error("Feature not present.");
         } else if (r == VK_ERROR_TOO_MANY_OBJECTS) {
-            LOG(ERROR) << "Too many logical devices.";
+            throw std::runtime_error("Too many logical devices.");
         } else if (r == VK_ERROR_DEVICE_LOST) {
-            LOG(ERROR) << "Device lost.";
+            throw std::runtime_error("Device lost.");
         } else if (r != VK_SUCCESS) {
-            LOG(ERROR) << "Could not create physical device: " << r;
+            throw std::runtime_error("Could not create physical device.");
         } else {
             vk.device = device;
         }
     }
 
-    if (device != VK_NULL_HANDLE) {
-        /* NOTE(jan): Device queues. */
+    /* NOTE(jan): Device queues. */
+    {
         vkGetDeviceQueue(
                 device, vk.queues.graphics.family_index, 0, &vk.queues.graphics.q
         );
