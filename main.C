@@ -131,7 +131,6 @@ struct Pipeline {
     VkDescriptorSet descriptorSet;
 };
 
-VkCommandPool commandPool;
 std::vector<VkCommandBuffer> commandBuffers;
 
 VkSemaphore imageAvailable;
