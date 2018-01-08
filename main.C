@@ -620,6 +620,7 @@ main (int argc, char** argv, char** envp) {
     ai.engineVersion = VK_MAKE_VERSION(0, 1, 0);
     ai.apiVersion = VK_API_VERSION_1_0;
 
+    /* NOTE(jan): Start creating Vulkan instance. */
     VkInstanceCreateInfo ici = {};
     ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     ici.pApplicationInfo = &ai;
