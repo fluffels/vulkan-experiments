@@ -441,12 +441,10 @@ buffer_create(const VK& vk,
     bci.size = size;
     bci.usage = usage;
     bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    VkResult r = vkCreateBuffer(
-            vk.device, &bci, nullptr, &buffer.b
+    vk_check_success(
+        vkCreateBuffer(vk.device, &bci, nullptr, &buffer.b),
+        "Could not create buffer."
     );
-    if (r != VK_SUCCESS) {
-        LOG(ERROR) << "Could not create buffer: " << r;
-    }
 
     VkMemoryRequirements mr;
     vkGetBufferMemoryRequirements(vk.device, buffer.b, &mr);
@@ -455,12 +453,11 @@ buffer_create(const VK& vk,
     mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     mai.allocationSize = mr.size;
     mai.memoryTypeIndex = memory_find_type(vk, mr, required_memory_properties);
-    r = vkAllocateMemory(vk.device, &mai, nullptr, &buffer.m);
-    if (r != VK_SUCCESS) {
-        LOG(ERROR) << "Could not allocate buffer memory: " << r;
-    } else {
-        vkBindBufferMemory(vk.device, buffer.b, buffer.m, 0);
-    }
+    vk_check_success(
+        vkAllocateMemory(vk.device, &mai, nullptr, &buffer.m),
+        "Could not allocate buffer memory."
+    );
+    vkBindBufferMemory(vk.device, buffer.b, buffer.m, 0);
 
     return buffer;
 }
