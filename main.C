@@ -81,6 +81,8 @@ struct SwapChain {
     std::vector<Image> images;
     std::vector<VkFramebuffer> frames;
     std::vector<VkCommandBuffer> command_buffers;
+    VkSemaphore image_available;
+    VkSemaphore render_finished;
 
 };
 
@@ -132,9 +134,6 @@ struct Pipeline {
     VkDescriptorPool descriptorPool;
     VkDescriptorSet descriptorSet;
 };
-
-VkSemaphore imageAvailable;
-VkSemaphore renderFinished;
 
 const std::vector<const char*> requiredDeviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -1655,11 +1654,11 @@ main (int argc, char** argv, char** envp) {
         VkResult result;
         bool success;
         result = vkCreateSemaphore(
-            vk.device, &sci, nullptr, &imageAvailable
+            vk.device, &sci, nullptr, &vk.swap.image_available
         );
         success = result == VK_SUCCESS;
         result = vkCreateSemaphore(
-            vk.device, &sci, nullptr, &renderFinished
+            vk.device, &sci, nullptr, &vk.swap.render_finished
         );
         success = success && (result == VK_SUCCESS);
         if (!success) {
@@ -1707,12 +1706,12 @@ main (int argc, char** argv, char** envp) {
         vkAcquireNextImageKHR(
             vk.device, vk.swap.h,
             std::numeric_limits<uint64_t>::max(),
-            imageAvailable, VK_NULL_HANDLE, &imageIndex
+            vk.swap.image_available, VK_NULL_HANDLE, &imageIndex
         );
 
         VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        VkSemaphore waitSemaphores[] = {imageAvailable};
+        VkSemaphore waitSemaphores[] = {vk.swap.image_available};
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         VkPipelineStageFlags waitStages[] = {
@@ -1721,7 +1720,7 @@ main (int argc, char** argv, char** envp) {
         submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &vk.swap.command_buffers[imageIndex];
-        VkSemaphore signalSemaphores[] = {renderFinished};
+        VkSemaphore signalSemaphores[] = {vk.swap.render_finished};
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
         vk_check_success(
@@ -1761,8 +1760,8 @@ main (int argc, char** argv, char** envp) {
     if (vkDestroyCallback != nullptr) {
         vkDestroyCallback(vk.h, callback_debug, nullptr);
     }
-    vkDestroySemaphore(vk.device, renderFinished, nullptr);
-    vkDestroySemaphore(vk.device, imageAvailable, nullptr);
+    vkDestroySemaphore(vk.device, vk.swap.render_finished, nullptr);
+    vkDestroySemaphore(vk.device, vk.swap.image_available, nullptr);
     vkDestroyImageView(vk.device, scene.depth.v, nullptr);
     vkFreeMemory(vk.device, scene.depth.m, nullptr);
     vkDestroyImage(vk.device, scene.depth.i, nullptr);
