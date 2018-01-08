@@ -155,15 +155,15 @@ vk_check_success(VkResult r,
     }
 }
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-        VkDebugReportFlagsEXT flags,
-        VkDebugReportObjectTypeEXT objType,
-        uint64_t obj,
-        size_t location,
-        int32_t code,
-        const char* layerPrefix,
-        const char* msg,
-        void* userData) {
+static VKAPI_ATTR VkBool32 VKAPI_CALL
+debugCallback(VkDebugReportFlagsEXT flags,
+              VkDebugReportObjectTypeEXT objType,
+              uint64_t obj,
+              size_t location,
+              int32_t code,
+              const char* layerPrefix,
+              const char* msg,
+              void* userData) {
     if (flags == VK_DEBUG_REPORT_ERROR_BIT_EXT) {
         LOG(ERROR) << "[" << layerPrefix << "] " << msg;
     } else if (flags == VK_DEBUG_REPORT_WARNING_BIT_EXT) {
@@ -174,8 +174,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     return VK_FALSE;
 }
 
-void on_key_event(
-        GLFWwindow* window, int key, int scancode, int action, int mods) {
+void on_key_event(GLFWwindow* window,
+                  int key,
+                  int scancode,
+                  int action,
+                  int mods) {
     if (key == GLFW_KEY_ESCAPE) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
@@ -196,7 +199,8 @@ readFile(const std::string& path) {
 }
 
 VkShaderModule
-create_shader_module(VK& vk, const std::vector<char> &code) {
+create_shader_module(VK& vk,
+                     const std::vector<char> &code) {
     VkShaderModuleCreateInfo c = {};
     c.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     c.codeSize = code.size();
@@ -484,11 +488,10 @@ buffer_create(VK& vk,
 }
 
 Buffer
-buffer_create_and_initialize(
-        VK &vk,
-        VkBufferUsageFlags usage,
-        VkDeviceSize size,
-        void *contents) {
+buffer_create_and_initialize(VK &vk,
+                             VkBufferUsageFlags usage,
+                             VkDeviceSize size,
+                             void *contents) {
     auto staging = buffer_create(
             vk,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
