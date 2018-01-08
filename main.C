@@ -80,6 +80,8 @@ struct SwapChain {
     VkSwapchainKHR h;
     std::vector<Image> images;
     std::vector<VkFramebuffer> frames;
+    std::vector<VkCommandBuffer> command_buffers;
+
 };
 
 /**
@@ -130,8 +132,6 @@ struct Pipeline {
     VkDescriptorPool descriptorPool;
     VkDescriptorSet descriptorSet;
 };
-
-std::vector<VkCommandBuffer> commandBuffers;
 
 VkSemaphore imageAvailable;
 VkSemaphore renderFinished;
@@ -1582,25 +1582,25 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Command buffer creation. */
     {
-        commandBuffers.resize(vk.swap.l);
+        vk.swap.command_buffers.resize(vk.swap.l);
         VkCommandBufferAllocateInfo i = {};
         i.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         i.commandPool = command_pool;
         i.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        i.commandBufferCount = (uint32_t)commandBuffers.size();
+        i.commandBufferCount = (uint32_t)vk.swap.command_buffers.size();
         vk_check_success(
-            vkAllocateCommandBuffers(vk.device, &i, commandBuffers.data()),
+            vkAllocateCommandBuffers(vk.device, &i, vk.swap.command_buffers.data()),
             "Could not allocate command buffers."
         );
     }
 
     /* NOTE(jan): Command buffer recording. */
-    for (size_t i = 0; i < commandBuffers.size(); i++) {
+    for (size_t i = 0; i < vk.swap.command_buffers.size(); i++) {
         VkCommandBufferBeginInfo cbbi = {};
         cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         cbbi.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
         cbbi.pInheritanceInfo = nullptr;
-        vkBeginCommandBuffer(commandBuffers[i], &cbbi);
+        vkBeginCommandBuffer(vk.swap.command_buffers[i], &cbbi);
 
         /* NOTE(jan): Set up render pass. */
         VkRenderPassBeginInfo rpbi = {};
@@ -1615,14 +1615,14 @@ main (int argc, char** argv, char** envp) {
         rpbi.clearValueCount = 2;
         rpbi.pClearValues = clear;
         vkCmdBeginRenderPass(
-            commandBuffers[i], &rpbi, VK_SUBPASS_CONTENTS_INLINE
+            vk.swap.command_buffers[i], &rpbi, VK_SUBPASS_CONTENTS_INLINE
         );
         vkCmdBindPipeline(
-            commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+            vk.swap.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipeline.handle
         );
         vkCmdBindDescriptorSets(
-            commandBuffers[i],
+            vk.swap.command_buffers[i],
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipeline.layout,
             0, 1,
@@ -1632,18 +1632,18 @@ main (int argc, char** argv, char** envp) {
         VkBuffer vertex_buffers[] = {scene.vertices.b};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(
-            commandBuffers[i], 0, 1, vertex_buffers, offsets
+            vk.swap.command_buffers[i], 0, 1, vertex_buffers, offsets
         );
         vkCmdBindIndexBuffer(
-            commandBuffers[i], scene.indices.b, 0, VK_INDEX_TYPE_UINT32
+            vk.swap.command_buffers[i], scene.indices.b, 0, VK_INDEX_TYPE_UINT32
         );
         vkCmdDrawIndexed(
-            commandBuffers[i], static_cast<uint32_t>(indices.size()),
+            vk.swap.command_buffers[i], static_cast<uint32_t>(indices.size()),
             1, 0, 0, 0
         );
-        vkCmdEndRenderPass(commandBuffers[i]);
+        vkCmdEndRenderPass(vk.swap.command_buffers[i]);
         vk_check_success(
-            vkEndCommandBuffer(commandBuffers[i]),
+            vkEndCommandBuffer(vk.swap.command_buffers[i]),
             "Failed to record command buffer."
         );
     }
@@ -1720,7 +1720,7 @@ main (int argc, char** argv, char** envp) {
         };
         submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+        submitInfo.pCommandBuffers = &vk.swap.command_buffers[imageIndex];
         VkSemaphore signalSemaphores[] = {renderFinished};
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
