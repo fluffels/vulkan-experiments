@@ -875,10 +875,10 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Device queues. */
     {
         vkGetDeviceQueue(
-            device, vk.queues.graphics.family_index, 0, &vk.queues.graphics.q
+            vk.device, vk.queues.graphics.family_index, 0, &vk.queues.graphics.q
         );
         vkGetDeviceQueue(
-            device, vk.queues.present.family_index, 0, &vk.queues.present.q
+            vk.device, vk.queues.present.family_index, 0, &vk.queues.present.q
         );
         LOG(INFO) << "Graphics queue: " << vk.queues.graphics.q;
         LOG(INFO) << "Presentation queue: " << vk.queues.present.q;
