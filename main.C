@@ -161,6 +161,14 @@ const int WINDOW_WIDTH = 800;
 
 INITIALIZE_EASYLOGGINGPP
 
+void
+vk_check_success(VkResult r,
+                 const char *msg) {
+    if (r != VK_SUCCESS) {
+        throw(msg);
+    }
+}
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugReportFlagsEXT flags,
         VkDebugReportObjectTypeEXT objType,
@@ -688,21 +696,18 @@ main (int argc, char** argv, char** envp) {
         if (create == nullptr) {
             LOG(WARNING) << "Could load debug callback creation function";
         } else {
-            VkResult r = create(vk.h, &cf, nullptr, &callback_debug);
-            if (r != VK_SUCCESS) {
-                LOG(WARNING) << "Could not create debug callback";
-            }
+            vk_check_success(
+                create(vk.h, &cf, nullptr, &callback_debug),
+                "Could not create debug callback"
+            );
         }
     }
 
     /* NOTE(jan): Create surface. */
-    {
-        VkResult r;
-        r = glfwCreateWindowSurface(vk.h, window, nullptr, &vk.surface);
-        if (r != VK_SUCCESS) {
-            LOG(ERROR) << "Could not create surface.";
-        }
-    }
+    vk_check_success(
+        glfwCreateWindowSurface(vk.h, window, nullptr, &vk.surface),
+        "Could not create surface."
+    );
 
     /* NOTE(jan): Physical device selection. */
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -710,111 +715,110 @@ main (int argc, char** argv, char** envp) {
     vkEnumeratePhysicalDevices(vk.h, &deviceCount, nullptr);
     uint32_t queueFamilyCount;
     if (deviceCount == 0) {
-        LOG(ERROR) << "No Vulkan devices detected.";
-    } else {
-        std::vector<VkPhysicalDevice> devices(deviceCount);
-        vkEnumeratePhysicalDevices(vk.h, &deviceCount, devices.data());
-        int max_score = -1;
-        for (const auto& device: devices) {
-            int score = -1;
-            VkPhysicalDeviceProperties deviceProperties;
-            vkGetPhysicalDeviceProperties(device, &deviceProperties);
-            VkPhysicalDeviceFeatures deviceFeatures;
-            vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+        throw("No Vulkan devices detected.");
+    }
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(vk.h, &deviceCount, devices.data());
+    int max_score = -1;
+    for (const auto& device: devices) {
+        int score = -1;
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(device, &deviceProperties);
+        VkPhysicalDeviceFeatures deviceFeatures;
+        vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
-            uint32_t extensionCount;
-            vkEnumerateDeviceExtensionProperties(
-                    device, nullptr, &extensionCount, nullptr
-            );
-            std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-            vkEnumerateDeviceExtensionProperties(
-                    device, nullptr, &extensionCount, availableExtensions.data()
-            );
-            std::set<std::string> requiredExtensionSet(
-                    requiredDeviceExtensions.begin(),
-                    requiredDeviceExtensions.end()
-            );
-            for (const auto& extension: availableExtensions) {
-                requiredExtensionSet.erase(extension.extensionName);
-            }
-
-            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-                    device, vk.surface, &vk.swap.capabilities
-            );
-            uint32_t formatCount;
-            vkGetPhysicalDeviceSurfaceFormatsKHR(
-                    device, vk.surface, &formatCount, nullptr
-            );
-            if (formatCount > 0) {
-                vk.swap.formats.resize(formatCount);
-                vkGetPhysicalDeviceSurfaceFormatsKHR(
-                        device, vk.surface, &formatCount,
-                        vk.swap.formats.data()
-                );
-            }
-            uint32_t presentModeCount;
-            vkGetPhysicalDeviceSurfacePresentModesKHR(
-                    device, vk.surface, &presentModeCount, nullptr
-            );
-            if (presentModeCount > 0) {
-                vk.swap.modes.resize(presentModeCount);
-                vkGetPhysicalDeviceSurfacePresentModesKHR(
-                        device, vk.surface, &presentModeCount,
-                        vk.swap.modes.data()
-                );
-            }
-
-            if (requiredExtensionSet.empty() &&
-                    deviceFeatures.samplerAnisotropy &&
-                    !vk.swap.formats.empty() &&
-                    !vk.swap.modes.empty()) {
-                vkGetPhysicalDeviceQueueFamilyProperties(
-                        device, &queueFamilyCount, nullptr
-                );
-                std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-                vkGetPhysicalDeviceQueueFamilyProperties(
-                        device, &queueFamilyCount, queueFamilies.data()
-                );
-                vk.queues.graphics.family_index = -1;
-                vk.queues.present.family_index = -1;
-                int i = 0;
-                for (const auto& queueFamily: queueFamilies) {
-                    VkBool32 presentSupport = VK_FALSE;
-                    vkGetPhysicalDeviceSurfaceSupportKHR(
-                            device, i, vk.surface, &presentSupport
-                    );
-                    if ((queueFamily.queueCount) & presentSupport) {
-                        vk.queues.present.family_index = i;
-                    }
-                    if ((queueFamily.queueCount) &&
-                        (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-                        vk.queues.graphics.family_index = i;
-                    }
-                    if ((vk.queues.present.family_index >= 0) &&
-                        (vk.queues.graphics.family_index >= 0))
-                    {
-                        score = 0;
-                        if (deviceProperties.deviceType ==
-                            VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-                            score += 100;
-                        }
-                        break;
-                    }
-                    i++;
-                }
-            }
-            LOG(INFO) << "Device '" << device << "' scored at " << score;
-            if (score > max_score) {
-                physicalDevice = device;
-                vk.physical_device = device;
-            }
-            break;
+        uint32_t extensionCount;
+        vkEnumerateDeviceExtensionProperties(
+                device, nullptr, &extensionCount, nullptr
+        );
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateDeviceExtensionProperties(
+                device, nullptr, &extensionCount, availableExtensions.data()
+        );
+        std::set<std::string> requiredExtensionSet(
+                requiredDeviceExtensions.begin(),
+                requiredDeviceExtensions.end()
+        );
+        for (const auto& extension: availableExtensions) {
+            requiredExtensionSet.erase(extension.extensionName);
         }
+
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+                device, vk.surface, &vk.swap.capabilities
+        );
+        uint32_t formatCount;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(
+                device, vk.surface, &formatCount, nullptr
+        );
+        if (formatCount > 0) {
+            vk.swap.formats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(
+                    device, vk.surface, &formatCount,
+                    vk.swap.formats.data()
+            );
+        }
+        uint32_t presentModeCount;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(
+                device, vk.surface, &presentModeCount, nullptr
+        );
+        if (presentModeCount > 0) {
+            vk.swap.modes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(
+                    device, vk.surface, &presentModeCount,
+                    vk.swap.modes.data()
+            );
+        }
+
+        if (requiredExtensionSet.empty() &&
+                deviceFeatures.samplerAnisotropy &&
+                !vk.swap.formats.empty() &&
+                !vk.swap.modes.empty()) {
+            vkGetPhysicalDeviceQueueFamilyProperties(
+                    device, &queueFamilyCount, nullptr
+            );
+            std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+            vkGetPhysicalDeviceQueueFamilyProperties(
+                    device, &queueFamilyCount, queueFamilies.data()
+            );
+            vk.queues.graphics.family_index = -1;
+            vk.queues.present.family_index = -1;
+            int i = 0;
+            for (const auto& queueFamily: queueFamilies) {
+                VkBool32 presentSupport = VK_FALSE;
+                vkGetPhysicalDeviceSurfaceSupportKHR(
+                        device, i, vk.surface, &presentSupport
+                );
+                if ((queueFamily.queueCount) & presentSupport) {
+                    vk.queues.present.family_index = i;
+                }
+                if ((queueFamily.queueCount) &&
+                    (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+                    vk.queues.graphics.family_index = i;
+                }
+                if ((vk.queues.present.family_index >= 0) &&
+                    (vk.queues.graphics.family_index >= 0))
+                {
+                    score = 0;
+                    if (deviceProperties.deviceType ==
+                        VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+                        score += 100;
+                    }
+                    break;
+                }
+                i++;
+            }
+        }
+        LOG(INFO) << "Device '" << device << "' scored at " << score;
+        if (score > max_score) {
+            physicalDevice = device;
+            vk.physical_device = device;
+        }
+        break;
     }
 
     /* NOTE(jan): Logical device. */
     if (physicalDevice == VK_NULL_HANDLE) {
-        LOG(ERROR) << "No suitable Vulkan devices detected.";
+        throw("No suitable Vulkan devices detected.");
     } else {
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<int> uniqueQueueFamilyIndices = {
