@@ -152,14 +152,14 @@ vk_check_success(VkResult r,
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
-debugCallback(VkDebugReportFlagsEXT flags,
-              VkDebugReportObjectTypeEXT objType,
-              uint64_t obj,
-              size_t location,
-              int32_t code,
-              const char* layerPrefix,
-              const char* msg,
-              void* userData) {
+debug_callback(VkDebugReportFlagsEXT flags,
+               VkDebugReportObjectTypeEXT objType,
+               uint64_t obj,
+               size_t location,
+               int32_t code,
+               const char *layerPrefix,
+               const char *msg,
+               void *userData) {
     if (flags == VK_DEBUG_REPORT_ERROR_BIT_EXT) {
         LOG(ERROR) << "[" << layerPrefix << "] " << msg;
     } else if (flags == VK_DEBUG_REPORT_WARNING_BIT_EXT) {
@@ -181,7 +181,7 @@ void on_key_event(GLFWwindow* window,
 }
 
 static std::vector<char>
-readFile(const std::string& path) {
+read_file(const std::string &path) {
     std::ifstream file(path, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
         LOG(ERROR) << "Could not open " << path;
@@ -692,7 +692,7 @@ main (int argc, char** argv, char** envp) {
         cf.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
                    VK_DEBUG_REPORT_WARNING_BIT_EXT |
                    VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-        cf.pfnCallback = debugCallback;
+        cf.pfnCallback = debug_callback;
         auto create =
             (PFN_vkCreateDebugReportCallbackEXT)
             vkGetInstanceProcAddr(vk.h, "vkCreateDebugReportCallbackEXT");
@@ -1123,9 +1123,9 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Create pipeline. */
     {
-        auto code = readFile("shaders/triangle/vert.spv");
+        auto code = read_file("shaders/triangle/vert.spv");
         pipeline.vertModule = create_shader_module(vk, code);
-        code = readFile("shaders/triangle/frag.spv");
+        code = read_file("shaders/triangle/frag.spv");
         pipeline.fragModule = create_shader_module(vk, code);
 
         VkPipelineShaderStageCreateInfo vertStageCreateInfo = {};
