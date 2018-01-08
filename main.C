@@ -633,11 +633,11 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Create Vulkan instance. */
     VkResult result = vkCreateInstance(&ici, nullptr, &vk.h);
     if (result == VK_ERROR_LAYER_NOT_PRESENT) {
-        LOG(ERROR) << "Layer not present.";
+        throw std::runtime_error("Layer not present.");
     } else if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
-        LOG(ERROR) << "Extension not present.";
+        throw std::runtime_error("Extension not present.");
     } else if (result != VK_SUCCESS) {
-        LOG(ERROR) << "Could not instantiate Vulkan.";
+        throw std::runtime_error("Could not instantiate Vulkan.");
     }
 
     /* NOTE(jan): Debug callback. */
