@@ -256,9 +256,9 @@ format_find_depth(VK& vk) {
 }
 
 uint32_t
-memory_find_type(VK& vk,
-                 VkMemoryRequirements requirements,
-                 VkMemoryPropertyFlags properties) {
+memory_find_type(const VK& vk,
+                 const VkMemoryRequirements requirements,
+                 const VkMemoryPropertyFlags properties) {
     VkPhysicalDeviceMemoryProperties pdmp;
     vkGetPhysicalDeviceMemoryProperties(vk.physical_device, &pdmp);
 
@@ -344,14 +344,15 @@ image_create(VK& vk,
 }
 
 VkCommandBuffer
-command_one_off_start(VK &vk) {
+command_one_off_start(const VK& vk,
+                      const VkCommandPool& cp) {
     /* TODO(jan): Create a separate command pool for short lived buffers and
      * set VK_COMMAND_POOL_CREATE_TRANSIENT_BIT so the implementation can
      * optimize this. */
     VkCommandBufferAllocateInfo cbai = {};
     cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cbai.commandPool = commandPool;
+    cbai.commandPool = cp;
     cbai.commandBufferCount = 1;
 
     VkCommandBuffer cb;
@@ -367,8 +368,9 @@ command_one_off_start(VK &vk) {
 }
 
 void
-command_one_off_stop_and_submit(VK& vk,
-                                VkCommandBuffer& cb) {
+command_one_off_stop_and_submit(const VK& vk,
+                                const VkCommandPool& cp,
+                                const VkCommandBuffer& cb) {
     vkEndCommandBuffer(cb);
 
     VkSubmitInfo si = {};
@@ -379,11 +381,12 @@ command_one_off_stop_and_submit(VK& vk,
     vkQueueSubmit(vk.queues.graphics.q, 1, &si, VK_NULL_HANDLE);
     vkQueueWaitIdle(vk.queues.graphics.q);
 
-    vkFreeCommandBuffers(vk.device, commandPool, 1, &cb);
+    vkFreeCommandBuffers(vk.device, cp, 1, &cb);
 }
 
 void
-image_transition(VK& vk,
+image_transition(const VK& vk,
+                 const VkCommandPool cp,
                  const Image& image,
                  VkFormat format,
                  VkImageLayout old_layout,
@@ -438,7 +441,7 @@ image_transition(VK& vk,
         throw std::invalid_argument("Unsupported layout transition.");
     }
 
-    auto cb = command_one_off_start(vk);
+    auto cb = command_one_off_start(vk, cp);
     vkCmdPipelineBarrier(
         cb,
         stage_src, stage_dst,
@@ -447,14 +450,14 @@ image_transition(VK& vk,
         0, nullptr,
         1, &barrier
     );
-    command_one_off_stop_and_submit(vk, cb);
+    command_one_off_stop_and_submit(vk, cp, cb);
 }
 
 Buffer
-buffer_create(VK& vk,
-              VkBufferUsageFlags usage,
-              VkMemoryPropertyFlags required_memory_properties,
-              VkDeviceSize size) {
+buffer_create(const VK& vk,
+              const VkBufferUsageFlags usage,
+              const VkMemoryPropertyFlags required_memory_properties,
+              const VkDeviceSize size) {
     Buffer buffer = {};
 
     VkBufferCreateInfo bci = {};
@@ -487,7 +490,8 @@ buffer_create(VK& vk,
 }
 
 Buffer
-buffer_create_and_initialize(VK &vk,
+buffer_create_and_initialize(const VK& vk,
+                             const VkCommandPool& cp,
                              VkBufferUsageFlags usage,
                              VkDeviceSize size,
                              void *contents) {
@@ -505,17 +509,17 @@ buffer_create_and_initialize(VK &vk,
     vkUnmapMemory(vk.device, staging.m);
 
     auto buffer = buffer_create(
-            vk,
-            usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            size
+        vk,
+        usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        size
     );
 
-    auto cb = command_one_off_start(vk);
+    auto cb = command_one_off_start(vk, cp);
     VkBufferCopy bc = {};
     bc.size = size;
     vkCmdCopyBuffer(cb, staging.b, buffer.b, 1, &bc);
-    command_one_off_stop_and_submit(vk, cb);
+    command_one_off_stop_and_submit(vk, cp, cb);
 
     vkDestroyBuffer(vk.device, staging.b, nullptr);
     vkFreeMemory(vk.device, staging.m, nullptr);
@@ -1309,13 +1313,14 @@ main (int argc, char** argv, char** envp) {
     }
 
     /* NOTE(jan): Command pool creation. */
+    VkCommandPool command_pool;
     {
         VkCommandPoolCreateInfo cf = {};
         cf.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cf.queueFamilyIndex = vk.queues.graphics.family_index;
         cf.flags = 0;
         vk_check_success(
-            vkCreateCommandPool(vk.device, &cf, nullptr, &commandPool),
+            vkCreateCommandPool(vk.device, &cf, nullptr, &command_pool),
             "Could not create command pool."
         );
     }
@@ -1324,7 +1329,7 @@ main (int argc, char** argv, char** envp) {
     {
         VkDeviceSize size = vector_size(vertices);
         scene.vertices = buffer_create_and_initialize(
-            vk, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size,
+            vk, command_pool, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size,
             (void *) vertices.data()
         );
     }
@@ -1333,8 +1338,8 @@ main (int argc, char** argv, char** envp) {
     {
         VkDeviceSize size = vector_size(indices);
         scene.indices = buffer_create_and_initialize(
-                vk, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size,
-                (void *) indices.data()
+            vk, command_pool, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size,
+            (void *) indices.data()
         );
     }
 
@@ -1393,13 +1398,14 @@ main (int argc, char** argv, char** envp) {
 
         image_transition(
             vk,
+            command_pool,
             scene.texture,
             VK_FORMAT_R8G8B8A8_UNORM,
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
         );
 
-        auto cb = command_one_off_start(vk);
+        auto cb = command_one_off_start(vk, command_pool);
         VkBufferImageCopy bic = {};
         bic.bufferOffset = 0;
         bic.bufferRowLength = 0;
@@ -1422,10 +1428,11 @@ main (int argc, char** argv, char** envp) {
             1,
             &bic
         );
-        command_one_off_stop_and_submit(vk, cb);
+        command_one_off_stop_and_submit(vk, command_pool, cb);
 
         image_transition(
             vk,
+            command_pool,
             scene.texture,
             VK_FORMAT_R8G8B8A8_UNORM,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -1474,6 +1481,7 @@ main (int argc, char** argv, char** envp) {
         );
         image_transition(
             vk,
+            command_pool,
             scene.depth,
             format,
             VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1578,7 +1586,7 @@ main (int argc, char** argv, char** envp) {
         commandBuffers.resize(vk.swap.l);
         VkCommandBufferAllocateInfo i = {};
         i.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        i.commandPool = commandPool;
+        i.commandPool = command_pool;
         i.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         i.commandBufferCount = (uint32_t)commandBuffers.size();
         vk_check_success(
@@ -1772,7 +1780,7 @@ main (int argc, char** argv, char** envp) {
     vkDestroyDescriptorPool(
         vk.device, pipeline.descriptorPool, nullptr
     );
-    vkDestroyCommandPool(vk.device, commandPool, nullptr);
+    vkDestroyCommandPool(vk.device, command_pool, nullptr);
     for (const auto& f: vk.swap.frames) {
         vkDestroyFramebuffer(vk.device, f, nullptr);
     }
