@@ -524,9 +524,9 @@ main (int argc, char** argv, char** envp) {
             for (int x = 0; x < 10; x++) {
                 Vertex vertex = {};
                 vertex.pos = {
-                    x / 10.f,
+                    (float)x,
                     0.0f,
-                    z / 10.f
+                    (float)z
                 };
                 indices.push_back(vertices.size());
                 vertices.push_back(vertex);
@@ -1633,8 +1633,8 @@ main (int argc, char** argv, char** envp) {
             float, std::chrono::seconds::period>(now - start).count();
         scene.mvp.model = glm::mat4(1.0f);
         scene.mvp.view = glm::lookAt(
-            glm::vec3(0.5f, -1.5f, 0.5f),
-            glm::vec3(0.5f, 0.0f, 0.5f),
+            glm::vec3(5.0f, -5.0f, 5.0f),
+            glm::vec3(5.0f, 0.0f, 5.0f),
             glm::vec3(0.0f, 0.0f, 1.0f)
         );
         scene.mvp.proj = glm::perspective(

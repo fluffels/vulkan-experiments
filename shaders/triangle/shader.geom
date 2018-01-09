@@ -8,14 +8,29 @@ layout (binding=0) uniform Uniforms {
 
 layout(points) in;
 layout(triangle_strip) out;
-layout(max_vertices=3) out;
+layout(max_vertices=4) out;
 
 void main() {
-    gl_Position = vec4(0.0, 0.5, 0.0, 1.0);
+    vec4 origin;
+    vec4 pos;
+
+    origin = gl_in[0].gl_Position;
+
+    pos = origin + vec4(0.0, 0.0, 0.0, 0.0);
+    gl_Position = u.proj * u.view * u.model * pos;
     EmitVertex();
-    gl_Position = vec4(-0.5, 0.0, 0.0, 1.0);
+
+    pos = origin + vec4(0.0, 0.0, 0.99, 0.0);
+    gl_Position = u.proj * u.view * u.model * pos;
     EmitVertex();
-    gl_Position = vec4(0.5, 0.0, 0.0, 1.0);
+
+    pos = origin + vec4(0.99, 0.0, 0.0, 0.0);
+    gl_Position = u.proj * u.view * u.model * pos;
     EmitVertex();
+
+    pos = origin + vec4(0.99, 0.0, 0.99, 0.0);
+    gl_Position = u.proj * u.view * u.model * pos;
+    EmitVertex();
+
     EndPrimitive();
 }
