@@ -157,8 +157,17 @@ void on_key_event(GLFWwindow* window,
                   int scancode,
                   int action,
                   int mods) {
+    float delta = 0.1;
     if (key == GLFW_KEY_ESCAPE) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+    } else if (key == GLFW_KEY_W) {
+        glm::vec3 forward = glm::normalize(at - eye);
+        eye += forward * delta;
+        at += forward * delta;
+    } else if (key == GLFW_KEY_S) {
+        glm::vec3 backward = glm::normalize(eye - at);
+        eye += backward * delta;
+        at += backward * delta;
     }
 }
 
@@ -1630,7 +1639,7 @@ main (int argc, char** argv, char** envp) {
         glm::radians(45.0f),
         vk.swap.extent.width / (float)vk.swap.extent.height,
         0.1f,
-        10.0f
+        1000.0f
     );
     /* NOTE(jan): Vulkan's y-axis is inverted relative to OpenGL. */
     scene.mvp.proj[1][1] *= -1;
