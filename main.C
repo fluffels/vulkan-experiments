@@ -97,6 +97,7 @@ std::vector<uint32_t> indices;
 auto eye = glm::vec3(5.0f, -5.0f, 5.0f);
 auto at = glm::vec3(5.0f, 0.0f, 5.0f);
 auto up = glm::vec3(0.0f, 0.0f, 1.0f);
+int keyboard[GLFW_KEY_LAST] = {GLFW_RELEASE};
 
 template<class T> size_t
 vector_size(const std::vector<T>& v) {
@@ -157,17 +158,14 @@ void on_key_event(GLFWwindow* window,
                   int scancode,
                   int action,
                   int mods) {
-    float delta = 0.1;
     if (key == GLFW_KEY_ESCAPE) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
-    } else if (key == GLFW_KEY_W) {
-        glm::vec3 forward = glm::normalize(at - eye);
-        eye += forward * delta;
-        at += forward * delta;
-    } else if (key == GLFW_KEY_S) {
-        glm::vec3 backward = glm::normalize(eye - at);
-        eye += backward * delta;
-        at += backward * delta;
+    } else {
+        if (action == GLFW_PRESS) {
+            keyboard[key] = GLFW_PRESS;
+        } else if (action == GLFW_RELEASE) {
+            keyboard[key] = GLFW_RELEASE;
+        }
     }
 }
 
@@ -1644,17 +1642,16 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Vulkan's y-axis is inverted relative to OpenGL. */
     scene.mvp.proj[1][1] *= -1;
 
+    /* NOTE(jan): All calculations should be scaled by the time it took
+     * to render the last frame. */
+    auto last_f = std::chrono::high_resolution_clock::now();
+    auto this_f = std::chrono::high_resolution_clock::now();
+    float delta_f = 0.0f;
+
     LOG(INFO) << "Entering main loop...";
     glfwSetKeyCallback(window, on_key_event);
     while(!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-
-        /* NOTE(jan): Calculate MVP. */
-        static auto start = std::chrono::high_resolution_clock::now();
-        auto now = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<
-            float, std::chrono::seconds::period>(now - start).count();
-        scene.mvp.view = glm::lookAt(eye, at, up);
+        last_f = std::chrono::high_resolution_clock::now();
 
         /* NOTE(jan): Copy MVP. */
         void* mvp_dst;
@@ -1703,6 +1700,40 @@ main (int argc, char** argv, char** envp) {
 
         vkQueuePresentKHR(vk.queues.present.q, &presentInfo);
         vkQueueWaitIdle(vk.queues.present.q);
+
+        this_f = std::chrono::high_resolution_clock::now();
+        delta_f = std::chrono::duration<
+            float, std::chrono::seconds::period>(this_f - last_f).count();
+
+        float fps = 1.0f / delta_f;
+        char title[255];
+        snprintf(title, 255, "FPS: %f", fps);
+        glfwSetWindowTitle(window, title);
+
+        glfwPollEvents();
+        /* NOTE(jan): Calculate MVP. */
+        auto delta = 1.f;
+        if (keyboard[GLFW_KEY_W] == GLFW_PRESS) {
+            glm::vec3 forward = glm::normalize(at - eye);
+            eye += forward * delta * delta_f;
+            at += forward * delta * delta_f;
+        } else if (keyboard[GLFW_KEY_S] == GLFW_PRESS) {
+            glm::vec3 backward = glm::normalize(eye - at);
+            eye += backward * delta * delta_f;
+            at += backward * delta * delta_f;
+        } else if (keyboard[GLFW_KEY_A] == GLFW_PRESS) {
+            glm::vec3 forward = glm::normalize(at - eye);
+            glm::vec3 right = glm::cross(forward, up);
+            glm::vec3 left = right * -1.f;
+            eye += left * delta * delta_f;
+            at += left * delta * delta_f;
+        } else if (keyboard[GLFW_KEY_D] == GLFW_PRESS) {
+            glm::vec3 forward = glm::normalize(at - eye);
+            glm::vec3 right = glm::cross(forward, up);
+            eye += right * delta * delta_f;
+            at += right * delta * delta_f;
+        }
+        scene.mvp.view = glm::lookAt(eye, at, up);
     }
 
     /* NOTE(jan): Wait for everything to complete before we start destroying
