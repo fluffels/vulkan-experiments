@@ -94,6 +94,9 @@ struct Scene {
 
 std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
+auto eye = glm::vec3(5.0f, -5.0f, 5.0f);
+auto at = glm::vec3(5.0f, 0.0f, 5.0f);
+auto up = glm::vec3(0.0f, 0.0f, 1.0f);
 
 template<class T> size_t
 vector_size(const std::vector<T>& v) {
@@ -1623,11 +1626,6 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Initialize MVP matrices. */
     scene.mvp.model = glm::mat4(1.0f);
-    scene.mvp.view = glm::lookAt(
-        glm::vec3(5.0f, -5.0f, 5.0f),
-        glm::vec3(5.0f, 0.0f, 5.0f),
-        glm::vec3(0.0f, 0.0f, 1.0f)
-    );
     scene.mvp.proj = glm::perspective(
         glm::radians(45.0f),
         vk.swap.extent.width / (float)vk.swap.extent.height,
@@ -1647,6 +1645,7 @@ main (int argc, char** argv, char** envp) {
         auto now = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<
             float, std::chrono::seconds::period>(now - start).count();
+        scene.mvp.view = glm::lookAt(eye, at, up);
 
         /* NOTE(jan): Copy MVP. */
         void* mvp_dst;
