@@ -94,9 +94,9 @@ struct Scene {
 
 std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
-auto eye = glm::vec3(5.0f, -5.0f, 5.0f);
+auto eye = glm::vec3(15.0f, -5.0f, 15.0f);
 auto at = glm::vec3(5.0f, 0.0f, 5.0f);
-auto up = glm::vec3(0.0f, 0.0f, 1.0f);
+auto up = glm::vec3(0.0f, -1.0f, 0.0f);
 int keyboard[GLFW_KEY_LAST] = {GLFW_RELEASE};
 
 template<class T> size_t
