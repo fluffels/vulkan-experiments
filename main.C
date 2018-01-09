@@ -1621,6 +1621,22 @@ main (int argc, char** argv, char** envp) {
         }
     }
 
+    /* NOTE(jan): Initialize MVP matrices. */
+    scene.mvp.model = glm::mat4(1.0f);
+    scene.mvp.view = glm::lookAt(
+        glm::vec3(5.0f, -5.0f, 5.0f),
+        glm::vec3(5.0f, 0.0f, 5.0f),
+        glm::vec3(0.0f, 0.0f, 1.0f)
+    );
+    scene.mvp.proj = glm::perspective(
+        glm::radians(45.0f),
+        vk.swap.extent.width / (float)vk.swap.extent.height,
+        0.1f,
+        10.0f
+    );
+    /* NOTE(jan): Vulkan's y-axis is inverted relative to OpenGL. */
+    scene.mvp.proj[1][1] *= -1;
+
     LOG(INFO) << "Entering main loop...";
     glfwSetKeyCallback(window, on_key_event);
     while(!glfwWindowShouldClose(window)) {
@@ -1631,20 +1647,6 @@ main (int argc, char** argv, char** envp) {
         auto now = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<
             float, std::chrono::seconds::period>(now - start).count();
-        scene.mvp.model = glm::mat4(1.0f);
-        scene.mvp.view = glm::lookAt(
-            glm::vec3(5.0f, -5.0f, 5.0f),
-            glm::vec3(5.0f, 0.0f, 5.0f),
-            glm::vec3(0.0f, 0.0f, 1.0f)
-        );
-        scene.mvp.proj = glm::perspective(
-            glm::radians(45.0f),
-            vk.swap.extent.width / (float)vk.swap.extent.height,
-            0.1f,
-            10.0f
-        );
-        /* NOTE(jan): Vulkan's y-axis is inverted relative to OpenGL. */
-        scene.mvp.proj[1][1] *= -1;
 
         /* NOTE(jan): Copy MVP. */
         void* mvp_dst;
