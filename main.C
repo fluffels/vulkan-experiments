@@ -10,6 +10,7 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_SWIZZLE
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
 
@@ -1639,6 +1640,7 @@ main (int argc, char** argv, char** envp) {
         0.1f,
         1000.0f
     );
+    scene.mvp.view = glm::lookAt(eye, at, up);
     /* NOTE(jan): Vulkan's y-axis is inverted relative to OpenGL. */
     scene.mvp.proj[1][1] *= -1;
 
@@ -1712,31 +1714,35 @@ main (int argc, char** argv, char** envp) {
 
         glfwPollEvents();
         /* NOTE(jan): Calculate MVP. */
-        auto delta = 1.f;
+        auto delta = 1.f * delta_f;
         if (keyboard[GLFW_KEY_W] == GLFW_PRESS) {
-            glm::vec3 forward = glm::normalize(at - eye);
-            eye += forward * delta * delta_f;
-            at += forward * delta * delta_f;
+            auto axis = glm::vec4(0.0f, 0.0f, -1.0f, 0.0f);
+            axis *= delta;
+            glm::vec4 dir = scene.mvp.view * axis;
+            glm::vec3 dir3 = dir.xyz;
+            scene.mvp.view = glm::translate(scene.mvp.view, dir3);
         }
         if (keyboard[GLFW_KEY_S] == GLFW_PRESS) {
-            glm::vec3 backward = glm::normalize(eye - at);
-            eye += backward * delta * delta_f;
-            at += backward * delta * delta_f;
+            auto axis = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
+            axis *= delta;
+            glm::vec4 dir = scene.mvp.view * axis;
+            glm::vec3 dir3 = dir.xyz;
+            scene.mvp.view = glm::translate(scene.mvp.view, dir3);
         }
         if (keyboard[GLFW_KEY_A] == GLFW_PRESS) {
-            glm::vec3 forward = glm::normalize(at - eye);
-            glm::vec3 right = glm::cross(forward, up);
-            glm::vec3 left = right * -1.f;
-            eye += left * delta * delta_f;
-            at += left * delta * delta_f;
+            auto axis = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+            axis *= delta;
+            glm::vec4 dir = scene.mvp.view * axis;
+            glm::vec3 dir3 = dir.xyz;
+            scene.mvp.view = glm::translate(scene.mvp.view, dir3);
         }
         if (keyboard[GLFW_KEY_D] == GLFW_PRESS) {
-            glm::vec3 forward = glm::normalize(at - eye);
-            glm::vec3 right = glm::cross(forward, up);
-            eye += right * delta * delta_f;
-            at += right * delta * delta_f;
+            auto axis = glm::vec4(-1.0f, 0.0f, 0.0f, 0.0f);
+            axis *= delta;
+            glm::vec4 dir = scene.mvp.view * axis;
+            glm::vec3 dir3 = dir.xyz;
+            scene.mvp.view = glm::translate(scene.mvp.view, dir3);
         }
-        scene.mvp.view = glm::lookAt(eye, at, up);
     }
 
     /* NOTE(jan): Wait for everything to complete before we start destroying
