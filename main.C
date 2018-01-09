@@ -1717,17 +1717,20 @@ main (int argc, char** argv, char** envp) {
             glm::vec3 forward = glm::normalize(at - eye);
             eye += forward * delta * delta_f;
             at += forward * delta * delta_f;
-        } else if (keyboard[GLFW_KEY_S] == GLFW_PRESS) {
+        }
+        if (keyboard[GLFW_KEY_S] == GLFW_PRESS) {
             glm::vec3 backward = glm::normalize(eye - at);
             eye += backward * delta * delta_f;
             at += backward * delta * delta_f;
-        } else if (keyboard[GLFW_KEY_A] == GLFW_PRESS) {
+        }
+        if (keyboard[GLFW_KEY_A] == GLFW_PRESS) {
             glm::vec3 forward = glm::normalize(at - eye);
             glm::vec3 right = glm::cross(forward, up);
             glm::vec3 left = right * -1.f;
             eye += left * delta * delta_f;
             at += left * delta * delta_f;
-        } else if (keyboard[GLFW_KEY_D] == GLFW_PRESS) {
+        }
+        if (keyboard[GLFW_KEY_D] == GLFW_PRESS) {
             glm::vec3 forward = glm::normalize(at - eye);
             glm::vec3 right = glm::cross(forward, up);
             eye += right * delta * delta_f;
