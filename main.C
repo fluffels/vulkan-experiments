@@ -1736,6 +1736,15 @@ main (int argc, char** argv, char** envp) {
             eye += right * delta * delta_f;
             at += right * delta * delta_f;
         }
+        if (keyboard[GLFW_KEY_SPACE] == GLFW_PRESS) {
+            eye += up * delta * delta_f;
+            at += up * delta * delta_f;
+        }
+        if (keyboard[GLFW_KEY_LEFT_SHIFT] == GLFW_PRESS) {
+            glm::vec3 down = up * -1.f;
+            eye += down * delta * delta_f;
+            at += down * delta * delta_f;
+        }
         scene.mvp.view = glm::lookAt(eye, at, up);
     }
 
