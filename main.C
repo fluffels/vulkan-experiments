@@ -1712,8 +1712,40 @@ main (int argc, char** argv, char** envp) {
         glfwSetWindowTitle(window, title);
 
         glfwPollEvents();
-        /* NOTE(jan): Calculate MVP. */
-        auto delta = 1.f;
+        /* NOTE(jan): Mouse look. */
+        {
+            double delta_angle = 3.14;
+            struct Coord {
+                double x;
+                double y;
+            };
+            Coord mouse;
+            glfwGetCursorPos(window, &mouse.x, &mouse.y);
+            LOG(INFO) << "mouse.x = " << mouse.x << ", mouse.y = " << mouse.y;
+            Coord scaled = {
+                mouse.x / WINDOW_WIDTH,
+                mouse.y / WINDOW_HEIGHT
+            };
+            LOG(INFO) << "scaled.x = " << scaled.x << ", scaled.y = " << scaled.y;
+            Coord rotation = {
+                scaled.x * delta_angle,
+                scaled.y * delta_angle
+            };
+            LOG(INFO) << "rotation.x = " << rotation.x << ", rotation.y = " << rotation.y;
+            glm::vec3 d(glm::vec3(0, 0, 0) - eye);
+            glm::vec3 right = glm::cross(d, up);
+            glm::mat4 rot;
+            rot = glm::rotate(rot, (float)rotation.y, right);
+            rot = glm::rotate(rot, (float)rotation.x, up);
+            glm::vec4 d4(d, 0.f);
+            d4 = rot * d4;
+            d = glm::normalize(glm::vec3(d4));
+            at = eye + d;
+            LOG(INFO) << "d.x = " << d.x << ", d.y = " << d.y << ", d.z = " << d.z;
+        }
+
+        /* NOTE(jan): Movement. */
+        auto delta = 2.f;
         if (keyboard[GLFW_KEY_W] == GLFW_PRESS) {
             glm::vec3 forward = glm::normalize(at - eye);
             eye += forward * delta * delta_f;
@@ -1745,38 +1777,6 @@ main (int argc, char** argv, char** envp) {
             glm::vec3 down = up * -1.f;
             eye += down * delta * delta_f;
             at += down * delta * delta_f;
-        }
-
-        /* NOTE(jan): Mouse look. */
-        {
-            double delta_angle = 3.14;
-            struct Coord {
-                double x;
-                double y;
-            };
-            Coord mouse;
-            glfwGetCursorPos(window, &mouse.x, &mouse.y);
-            LOG(INFO) << "mouse.x = " << mouse.x << ", mouse.y = " << mouse.y;
-            Coord scaled = {
-                mouse.x / WINDOW_WIDTH,
-                mouse.y / WINDOW_HEIGHT
-            };
-            LOG(INFO) << "scaled.x = " << scaled.x << ", scaled.y = " << scaled.y;
-            Coord rotation = {
-                scaled.x * delta_angle,
-                scaled.y * delta_angle
-            };
-            LOG(INFO) << "rotation.x = " << rotation.x << ", rotation.y = " << rotation.y;
-            glm::vec3 d(glm::vec3(0, 0, 0) - eye);
-            glm::vec3 right = glm::cross(d, up);
-            glm::mat4 rot;
-            rot = glm::rotate(rot, (float)rotation.y, right);
-            rot = glm::rotate(rot, (float)rotation.x, up);
-            glm::vec4 d4(d, 0.f);
-            d4 = rot * d4;
-            d = glm::normalize(glm::vec3(d4));
-            at = eye + d;
-            LOG(INFO) << "d.x = " << d.x << ", d.y = " << d.y << ", d.z = " << d.z;
         }
 
         scene.mvp.view = glm::lookAt(eye, at, up);
