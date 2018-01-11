@@ -1650,6 +1650,7 @@ main (int argc, char** argv, char** envp) {
 
     LOG(INFO) << "Entering main loop...";
     glfwSetKeyCallback(window, on_key_event);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     while(!glfwWindowShouldClose(window)) {
         last_f = std::chrono::high_resolution_clock::now();
 
