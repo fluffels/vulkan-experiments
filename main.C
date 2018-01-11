@@ -21,6 +21,11 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
+struct Coord {
+    double x;
+    double y;
+};
+
 struct Buffer {
     VkBuffer b;
     VkDeviceMemory m;
@@ -1651,6 +1656,8 @@ main (int argc, char** argv, char** envp) {
     LOG(INFO) << "Entering main loop...";
     glfwSetKeyCallback(window, on_key_event);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    Coord mouse_centre;
+    glfwGetCursorPos(window, &mouse_centre.x, &mouse_centre.y);
     while(!glfwWindowShouldClose(window)) {
         last_f = std::chrono::high_resolution_clock::now();
 
@@ -1715,16 +1722,16 @@ main (int argc, char** argv, char** envp) {
         /* NOTE(jan): Mouse look. */
         {
             double delta_angle = 3.14;
-            struct Coord {
-                double x;
-                double y;
-            };
             Coord mouse;
             glfwGetCursorPos(window, &mouse.x, &mouse.y);
+            mouse = {
+                mouse.x - mouse_centre.x,
+                mouse.y - mouse_centre.y
+            };
             LOG(INFO) << "mouse.x = " << mouse.x << ", mouse.y = " << mouse.y;
             Coord scaled = {
-                mouse.x / WINDOW_WIDTH,
-                mouse.y / WINDOW_HEIGHT
+                mouse.x / WINDOW_WIDTH * -1.f,
+                mouse.y / WINDOW_HEIGHT * -1.f
             };
             LOG(INFO) << "scaled.x = " << scaled.x << ", scaled.y = " << scaled.y;
             Coord rotation = {
