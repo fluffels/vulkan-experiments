@@ -103,8 +103,8 @@ struct Scene {
 std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
 auto eye = glm::vec3(15.0f, -5.0f, 15.0f);
-auto at = glm::vec3(5.0f, 0.0f, 5.0f);
-auto up = glm::vec3(0.0f, -1.0f, 0.0f);
+auto at = glm::vec3(0.0f, 0.0f, 0.0f);
+auto up = glm::vec3(0.0f, 1.0f, 0.0f);
 int keyboard[GLFW_KEY_LAST] = {GLFW_RELEASE};
 
 template<class T> size_t
@@ -1594,7 +1594,7 @@ main (int argc, char** argv, char** envp) {
         rpbi.renderArea.offset = {0, 0};
         rpbi.renderArea.extent = vk.swap.extent;
         VkClearValue clear[2] = {};
-        clear[0].color = {1.0f, 1.0f, 1.1f, 1.0f};
+        clear[0].color = {1.0f, 1.0f, 1.0f, 0.0f};
         clear[1].depthStencil = {1.0f, 0};
         rpbi.clearValueCount = 2;
         rpbi.pClearValues = clear;
@@ -1659,8 +1659,6 @@ main (int argc, char** argv, char** envp) {
         0.1f,
         1000.0f
     );
-    /* NOTE(jan): Vulkan's y-axis is inverted relative to OpenGL. */
-    scene.mvp.proj[1][1] *= -1;
 
     /* NOTE(jan): All calculations should be scaled by the time it took
      * to render the last frame. */
@@ -1735,7 +1733,7 @@ main (int argc, char** argv, char** envp) {
 
         glfwPollEvents();
         /* NOTE(jan): Mouse look. */
-        {
+        /*{
             double delta_angle = 3.14;
             Coord mouse;
             glfwGetCursorPos(window, &mouse.x, &mouse.y);
@@ -1764,7 +1762,7 @@ main (int argc, char** argv, char** envp) {
             d = glm::normalize(glm::vec3(d4));
             at = eye + d;
             LOG(INFO) << "d.x = " << d.x << ", d.y = " << d.y << ", d.z = " << d.z;
-        }
+        }*/
 
         /* NOTE(jan): Movement. */
         auto delta = 2.f;
@@ -1792,13 +1790,13 @@ main (int argc, char** argv, char** envp) {
             at += right * delta * delta_f;
         }
         if (keyboard[GLFW_KEY_SPACE] == GLFW_PRESS) {
-            eye += up * delta * delta_f;
-            at += up * delta * delta_f;
+            eye -= up * delta * delta_f;
+            at -= up * delta * delta_f;
         }
         if (keyboard[GLFW_KEY_LEFT_SHIFT] == GLFW_PRESS) {
             glm::vec3 down = up * -1.f;
-            eye += down * delta * delta_f;
-            at += down * delta * delta_f;
+            eye -= down * delta * delta_f;
+            at -= down * delta * delta_f;
         }
 
         scene.mvp.view = glm::lookAt(eye, at, up);
