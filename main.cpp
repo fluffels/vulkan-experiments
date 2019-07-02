@@ -744,11 +744,22 @@ main (int argc, char** argv, char** envp) {
                 );
             }
 
-            if (extensions_required.empty() &&
-                    features.geometryShader &&
-                    features.samplerAnisotropy &&
-                    !vk.swap.formats.empty() &&
-                    !vk.swap.modes.empty()) {
+            if (!extensions_required.empty()) {
+                LOG(ERROR) << properties.deviceName << " does not support "
+                    << "all required extensions, skipping...";
+            } else if (!features.geometryShader) {
+                LOG(ERROR) << properties.deviceName << " does not support "
+                    << "geometry shaders, skipping...";
+            } else if (!features.samplerAnisotropy) {
+                LOG(ERROR) << properties.deviceName << " does not support "
+                    << "anisotropic samplers, skipping...";
+            } else if (vk.swap.formats.empty()) {
+                LOG(ERROR) << properties.deviceName << " does not support "
+                    << "any compatible swap formats, skipping...";
+            } else if (vk.swap.modes.empty()) {
+                LOG(ERROR) << properties.deviceName << " does not support "
+                    << "any compatible swap modes, skipping...";
+            } else {
                 vkGetPhysicalDeviceQueueFamilyProperties(
                     device, &count, nullptr
                 );
@@ -764,7 +775,7 @@ main (int argc, char** argv, char** envp) {
                     vkGetPhysicalDeviceSurfaceSupportKHR(
                         device, i, vk.surface, &presentSupport
                     );
-                    if ((queueFamily.queueCount) & presentSupport) {
+                    if ((queueFamily.queueCount) && presentSupport) {
                         vk.queues.present.family_index = i;
                     }
                     if ((queueFamily.queueCount) &&
@@ -784,7 +795,8 @@ main (int argc, char** argv, char** envp) {
                     i++;
                 }
             }
-            LOG(INFO) << "Device '" << device << "' scored at " << score;
+            LOG(INFO) << "Device '" << properties.deviceName
+                      << "' scored at " << score;
             if (score > max_score) {
                 vk.physical_device = device;
             }
