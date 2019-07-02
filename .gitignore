@@ -48,3 +48,4 @@ logs
 .vs
 build
 out
+CMakeSettings.json
