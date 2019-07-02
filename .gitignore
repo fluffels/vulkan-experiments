@@ -43,3 +43,8 @@ main
 
 # Execution Products
 logs
+
+# VisualStudio Trash
+.vs
+build
+out
