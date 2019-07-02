@@ -5,6 +5,9 @@
 #include <unordered_map>
 #include <vector>
 
+#ifndef NOMINMAX
+# define NOMINMAX
+#endif
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -594,7 +597,7 @@ main (int argc, char** argv, char** envp) {
     {
         uint32_t count;
         vkEnumerateInstanceLayerProperties(&count, nullptr);
-        VkLayerProperties layers_available[count];
+        auto layers_available = new VkLayerProperties[count];
         vkEnumerateInstanceLayerProperties(&count, layers_available);
         for (const auto &name_requested: layers_requested) {
             bool found = false;
@@ -974,7 +977,7 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Swap chain images. */
     {
         vkGetSwapchainImagesKHR(vk.device, vk.swap.h, &vk.swap.l, nullptr);
-        VkImage images[vk.swap.l];
+        auto images = new VkImage[vk.swap.l];
         vkGetSwapchainImagesKHR(vk.device, vk.swap.h, &vk.swap.l, images);
         for (int i = 0; i < vk.swap.l; i++) {
             vk.swap.images[i].i = images[i];
