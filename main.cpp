@@ -1815,9 +1815,11 @@ main (int argc, char** argv, char** envp) {
                     vk.h,
                     "vkDestroyDebugReportCallbackEXT"
             );
+#ifndef NDEBUG
     if (vkDestroyCallback != nullptr) {
         vkDestroyCallback(vk.h, callback_debug, nullptr);
     }
+#endif
     vkDestroySemaphore(vk.device, vk.swap.render_finished, nullptr);
     vkDestroySemaphore(vk.device, vk.swap.image_available, nullptr);
     vkDestroyImageView(vk.device, scene.depth.v, nullptr);

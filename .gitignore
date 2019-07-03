@@ -49,3 +49,11 @@ logs
 build
 out
 CMakeSettings.json
+.idea/.name
+.idea/customTargets.xml
+.idea/deployment.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+.idea/vulkan-experiments.iml
+.idea/workspace.xml
