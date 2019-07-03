@@ -46,9 +46,11 @@ logs
 
 # VisualStudio Trash
 .vs
-build
+!.vs/launch.vs.json
 out
 CMakeSettings.json
+
+# CLion Trash
 .idea/.name
 .idea/customTargets.xml
 .idea/deployment.xml
