@@ -45,7 +45,7 @@ main
 logs
 
 # VisualStudio Trash
-.vs
+.vs/*
 !.vs/launch.vs.json
 out
 CMakeSettings.json
