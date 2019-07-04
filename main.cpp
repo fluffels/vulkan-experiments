@@ -102,8 +102,8 @@ struct Scene {
 
 std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
-auto eye = glm::vec3(15.0f, -5.0f, 15.0f);
-auto at = glm::vec3(0.0f, 0.0f, 0.0f);
+auto eye = glm::vec3(8.95417f, -0.90874f, 12.2431f);
+auto at = glm::vec3(8.87782f, -0.85524f, 11.2475f);
 auto up = glm::vec3(0.0f, 1.0f, 0.0f);
 int keyboard[GLFW_KEY_LAST] = {GLFW_RELEASE};
 
@@ -1810,6 +1810,11 @@ main (int argc, char** argv, char** envp) {
         }
 
         scene.mvp.view = glm::lookAt(eye, at, up);
+
+        if (keyboard[GLFW_KEY_P] == GLFW_PRESS) {
+			LOG(INFO) << "eye(" << eye.x << " " << eye.y << " " << eye.z << ")";
+			LOG(INFO) << "at(" << at.x << " " << at.y << " " << at.z << ")";
+		}
     }
 
     /* NOTE(jan): Wait for everything to complete before we start destroying
