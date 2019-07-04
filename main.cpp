@@ -1669,6 +1669,10 @@ main (int argc, char** argv, char** envp) {
     LOG(INFO) << "Entering main loop...";
     glfwSetKeyCallback(window, on_key_event);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	if (glfwRawMouseMotionSupported()) {
+		LOG(INFO) << "Raw mouse motion is supported, enabling...";
+		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+	}
     Coord mouse_centre;
     glfwGetCursorPos(window, &mouse_centre.x, &mouse_centre.y);
     while(!glfwWindowShouldClose(window)) {
@@ -1733,36 +1737,38 @@ main (int argc, char** argv, char** envp) {
 
         glfwPollEvents();
         /* NOTE(jan): Mouse look. */
-        /*{
+        {
             double delta_angle = 3.14;
-            Coord mouse;
-            glfwGetCursorPos(window, &mouse.x, &mouse.y);
+			Coord screen, mouse;
+            glfwGetCursorPos(window, &screen.x, &screen.y);
             mouse = {
-                mouse.x - mouse_centre.x,
-                mouse.y - mouse_centre.y
+                screen.x - mouse_centre.x,
+                screen.y - mouse_centre.y
             };
-            LOG(INFO) << "mouse.x = " << mouse.x << ", mouse.y = " << mouse.y;
+			mouse_centre = {
+				screen.x,
+				screen.y
+			};
             Coord scaled = {
-                mouse.x / WINDOW_WIDTH * -1.f,
-                mouse.y / WINDOW_HEIGHT * -1.f
+                mouse.x / WINDOW_WIDTH,
+                mouse.y / WINDOW_HEIGHT
             };
-            LOG(INFO) << "scaled.x = " << scaled.x << ", scaled.y = " << scaled.y;
             Coord rotation = {
-                scaled.x * delta_angle,
+				/* NOTE(jan): Positive rotation is clockwise. */
+                scaled.x * delta_angle * (-1),
                 scaled.y * delta_angle
             };
-            LOG(INFO) << "rotation.x = " << rotation.x << ", rotation.y = " << rotation.y;
-            glm::vec3 d(glm::vec3(0, 0, 0) - eye);
-            glm::vec3 right = glm::cross(d, up);
-            glm::mat4 rot;
+			glm::vec3 d(glm::normalize(at - eye));
+			glm::vec3 right = glm::normalize(glm::cross(d, up));
+			glm::mat4 rot(1.0f);
             rot = glm::rotate(rot, (float)rotation.y, right);
             rot = glm::rotate(rot, (float)rotation.x, up);
             glm::vec4 d4(d, 0.f);
             d4 = rot * d4;
             d = glm::normalize(glm::vec3(d4));
+			d = glm::vec3(d4.x, d4.y, d4.z);
             at = eye + d;
-            LOG(INFO) << "d.x = " << d.x << ", d.y = " << d.y << ", d.z = " << d.z;
-        }*/
+        }
 
         /* NOTE(jan): Movement. */
         auto delta = 2.f;
