@@ -1673,8 +1673,8 @@ main (int argc, char** argv, char** envp) {
 		LOG(INFO) << "Raw mouse motion is supported, enabling...";
 		glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 	}
-    Coord mouse_centre;
-    glfwGetCursorPos(window, &mouse_centre.x, &mouse_centre.y);
+    Coord mouse_position_last_frame;
+    glfwGetCursorPos(window, &mouse_position_last_frame.x, &mouse_position_last_frame.y);
     while(!glfwWindowShouldClose(window)) {
         last_f = std::chrono::high_resolution_clock::now();
 
@@ -1739,19 +1739,23 @@ main (int argc, char** argv, char** envp) {
         /* NOTE(jan): Mouse look. */
         {
             double delta_angle = 3.14;
-			Coord screen, mouse;
-            glfwGetCursorPos(window, &screen.x, &screen.y);
-            mouse = {
-                screen.x - mouse_centre.x,
-                screen.y - mouse_centre.y
+			Coord mouse_position_this_frame, mouse_delta;
+			glfwGetCursorPos(
+				window,
+				&mouse_position_this_frame.x,
+				&mouse_position_this_frame.y
+			);
+            mouse_delta = {
+                mouse_position_this_frame.x - mouse_position_last_frame.x,
+                mouse_position_this_frame.y - mouse_position_last_frame.y
             };
-			mouse_centre = {
-				screen.x,
-				screen.y
+			mouse_position_last_frame = {
+				mouse_position_this_frame.x,
+				mouse_position_this_frame.y
 			};
             Coord scaled = {
-                mouse.x / WINDOW_WIDTH,
-                mouse.y / WINDOW_HEIGHT
+                mouse_delta.x / WINDOW_WIDTH,
+                mouse_delta.y / WINDOW_HEIGHT
             };
             Coord rotation = {
 				/* NOTE(jan): Positive rotation is clockwise. */
