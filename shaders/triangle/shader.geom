@@ -7,8 +7,7 @@ layout (binding=0) uniform Uniforms {
 } u;
 
 layout(points) in;
-layout(triangle_strip) out;
-layout(max_vertices=6) out;
+layout(triangle_strip, max_vertices=6) out;
 
 void main() {
     vec4 origin;
