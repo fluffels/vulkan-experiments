@@ -9,6 +9,8 @@ layout (binding=0) uniform Uniforms {
 layout(points) in;
 layout(triangle_strip, max_vertices=6) out;
 
+layout(location=0) out vec2 texCoord;
+
 void main() {
     vec4 origin;
     vec4 pos;
@@ -17,28 +19,34 @@ void main() {
 
     pos = origin + vec4(0.0, 0.0, 0.0, 0.0);
     gl_Position = u.proj * u.view * u.model * pos;
+	texCoord = vec2(1.0f, 1.0f);
     EmitVertex();
 
     pos = origin + vec4(1.0, 0.0, 1.0, 0.0);
     gl_Position = u.proj * u.view * u.model * pos;
+	texCoord = vec2(0.0f, 1.0f);
     EmitVertex();
 
     pos = origin + vec4(0.5, -1.0, 0.5, 0.0);
     gl_Position = u.proj * u.view * u.model * pos;
+	texCoord = vec2(0.5, 0.0);
     EmitVertex();
 
     EndPrimitive();
 
     pos = origin + vec4(0.5, -1.0, 0.5, 0.0);
     gl_Position = u.proj * u.view * u.model * pos;
+	texCoord = vec2(0.5, 0.0);
     EmitVertex();
 
     pos = origin + vec4(1.0, 0.0, 0.0, 0.0);
     gl_Position = u.proj * u.view * u.model * pos;
+	texCoord = vec2(1.0f, 1.0f);
     EmitVertex();
 
     pos = origin + vec4(0.0, 0.0, 1.0, 0.0);
     gl_Position = u.proj * u.view * u.model * pos;
+	texCoord = vec2(0.0f, 1.0f);
     EmitVertex();
 
     EndPrimitive();
