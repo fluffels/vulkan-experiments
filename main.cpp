@@ -100,6 +100,11 @@ struct Scene {
     Image depth;
 };
 
+struct Settings {
+	VkSampleCountFlagBits sampleCount;
+};
+
+Settings settings = {};
 std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
 auto eye = glm::vec3(8.95417f, -0.90874f, 12.2431f);
@@ -744,10 +749,26 @@ main (int argc, char** argv, char** envp) {
                 );
             }
 
+			/* NOTE(jan): Determine our multisampling settings. */
 			VkSampleCountFlags maxSampleCounts = std::min(
 				properties.limits.framebufferColorSampleCounts,
 				properties.limits.framebufferDepthSampleCounts
 			);
+			auto vkSampleCounts = {
+				VK_SAMPLE_COUNT_2_BIT,
+				VK_SAMPLE_COUNT_4_BIT,
+				VK_SAMPLE_COUNT_8_BIT,
+				VK_SAMPLE_COUNT_16_BIT,
+				VK_SAMPLE_COUNT_32_BIT,
+				VK_SAMPLE_COUNT_64_BIT,
+			};
+			std::vector<VkSampleCountFlagBits> availableSampleCounts;
+			for (auto sampleCount : vkSampleCounts) {
+				if (maxSampleCounts & sampleCount) {
+					availableSampleCounts.push_back(sampleCount);
+				}
+			}
+			settings.sampleCount = availableSampleCounts.back();
 
             if (!extensions_required.empty()) {
                 LOG(ERROR) << properties.deviceName << " does not support "
