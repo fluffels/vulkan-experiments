@@ -283,6 +283,7 @@ memory_find_type(const VK& vk,
 Image
 image_create(VK& vk,
              VkExtent3D extent,
+			 VkSampleCountFlagBits sampleCount,
              VkFormat image_format,
              VkFormat view_format,
              VkImageTiling tiling,
@@ -1398,6 +1399,7 @@ main (int argc, char** argv, char** envp) {
                 static_cast<uint32_t>(height),
                 1
             },
+			VK_SAMPLE_COUNT_1_BIT,
             VK_FORMAT_R8G8B8A8_UNORM,
             VK_FORMAT_R8G8B8A8_UNORM,
             VK_IMAGE_TILING_OPTIMAL,
@@ -1482,6 +1484,7 @@ main (int argc, char** argv, char** envp) {
         scene.depth = image_create(
             vk,
             {vk.swap.extent.width, vk.swap.extent.height, 1},
+			VK_SAMPLE_COUNT_1_BIT,
             format,
             format,
             VK_IMAGE_TILING_OPTIMAL,
