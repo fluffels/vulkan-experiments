@@ -744,6 +744,11 @@ main (int argc, char** argv, char** envp) {
                 );
             }
 
+			VkSampleCountFlags maxSampleCounts = std::min(
+				properties.limits.framebufferColorSampleCounts,
+				properties.limits.framebufferDepthSampleCounts
+			);
+
             if (!extensions_required.empty()) {
                 LOG(ERROR) << properties.deviceName << " does not support "
                     << "all required extensions, skipping...";
@@ -826,6 +831,7 @@ main (int argc, char** argv, char** envp) {
         VkPhysicalDeviceFeatures features = {};
         features.geometryShader = VK_TRUE;
         features.samplerAnisotropy = VK_TRUE;
+		features.sampleRateShading = VK_TRUE;
         VkDeviceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         createInfo.queueCreateInfoCount =
@@ -1206,9 +1212,9 @@ main (int argc, char** argv, char** envp) {
         VkPipelineMultisampleStateCreateInfo multisampling = {};
         multisampling.sType =
                 VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampling.sampleShadingEnable = VK_FALSE;
-        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-        multisampling.minSampleShading = 1.0f;
+        multisampling.sampleShadingEnable = VK_TRUE;
+		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        multisampling.minSampleShading = 0.0f;
         multisampling.pSampleMask = nullptr;
         multisampling.alphaToCoverageEnable = VK_FALSE;
         multisampling.alphaToOneEnable = VK_FALSE;
@@ -1218,11 +1224,11 @@ main (int argc, char** argv, char** envp) {
                                               VK_COLOR_COMPONENT_G_BIT |
                                               VK_COLOR_COMPONENT_B_BIT |
                                               VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment.blendEnable = VK_FALSE;
-        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+        colorBlendAttachment.blendEnable = VK_TRUE;
+        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
         colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
         colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
@@ -1344,7 +1350,7 @@ main (int argc, char** argv, char** envp) {
         int height;
         int depth;
         stbi_uc* pixels = stbi_load(
-            "chalet.jpg", &width, &height, &depth, STBI_rgb_alpha
+            "grass_square.png", &width, &height, &depth, STBI_rgb_alpha
         );
         if (!pixels) {
             throw std::runtime_error("Could not load texture.");
@@ -1706,10 +1712,16 @@ main (int argc, char** argv, char** envp) {
         VkSemaphore signalSemaphores[] = {vk.swap.render_finished};
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
-        vk_check_success(
-            vkQueueSubmit(vk.queues.graphics.q, 1, &submitInfo, VK_NULL_HANDLE),
-            "Could not submit to graphics queue."
-        );
+		result = vkQueueSubmit(vk.queues.graphics.q, 1, &submitInfo, VK_NULL_HANDLE);
+		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+			throw std::runtime_error("Could not submit to graphics queue: out of host memory.");
+		} else if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+			throw std::runtime_error("Could not submit to graphics queue: out of device memory.");
+		} else if (result == VK_ERROR_DEVICE_LOST) {
+			throw std::runtime_error("Could not submit to graphics queue: device lost.");
+		} else if (result != VK_SUCCESS) {
+			throw std::runtime_error("Could not submit to graphics queue for unknown reason.");
+		};
 
         VkPresentInfoKHR presentInfo = {};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
