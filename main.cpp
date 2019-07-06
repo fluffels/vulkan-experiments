@@ -1479,9 +1479,9 @@ main (int argc, char** argv, char** envp) {
         sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         sci.magFilter = VK_FILTER_LINEAR;
         sci.minFilter = VK_FILTER_LINEAR;
-        sci.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sci.anisotropyEnable = VK_TRUE;
         sci.maxAnisotropy = 16;
         sci.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
