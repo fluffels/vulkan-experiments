@@ -1906,6 +1906,9 @@ main (int argc, char** argv, char** envp) {
 #endif
     vkDestroySemaphore(vk.device, vk.swap.render_finished, nullptr);
     vkDestroySemaphore(vk.device, vk.swap.image_available, nullptr);
+	vkDestroyImageView(vk.device, scene.colour.v, nullptr);
+	vkFreeMemory(vk.device, scene.colour.m, nullptr);
+	vkDestroyImage(vk.device, scene.colour.i, nullptr);
     vkDestroyImageView(vk.device, scene.depth.v, nullptr);
     vkFreeMemory(vk.device, scene.depth.m, nullptr);
     vkDestroyImage(vk.device, scene.depth.i, nullptr);
