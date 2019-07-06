@@ -437,7 +437,14 @@ image_transition(const VK& vk,
                                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         stage_src = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         stage_dst = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    } else {
+	} else if ((old_layout == VK_IMAGE_LAYOUT_UNDEFINED) &&
+	           (new_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)) {
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+			                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		stage_src = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		stage_dst = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	} else {
         throw std::invalid_argument("Unsupported layout transition.");
     }
 
