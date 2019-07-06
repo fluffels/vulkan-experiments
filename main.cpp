@@ -97,6 +97,7 @@ struct Scene {
     Buffer vertices;
     MVP mvp;
     Image texture;
+	Image colour;
     Image depth;
 };
 
@@ -1484,6 +1485,31 @@ main (int argc, char** argv, char** envp) {
             "Could not create image sampler."
         );
     }
+
+	/* NOTE(jan): Colour buffer. */
+	{
+		auto format = vk.swap.format;
+		scene.colour = image_create(
+			vk,
+			{ vk.swap.extent.width, vk.swap.extent.height, 1 },
+			settings.sampleCount,
+			vk.swap.format.format,
+			vk.swap.format.format,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			VK_IMAGE_ASPECT_COLOR_BIT
+		);
+		image_transition(
+			vk,
+			command_pool,
+			scene.colour,
+			vk.swap.format.format,
+			VK_IMAGE_LAYOUT_UNDEFINED,
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+		);
+	}
+
 
     /* NOTE(jan): Depth buffer. */
     {
