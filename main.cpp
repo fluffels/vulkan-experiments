@@ -295,6 +295,7 @@ image_create(VK& vk,
     ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     ici.imageType = VK_IMAGE_TYPE_2D;
     ici.extent = extent;
+	ici.samples = sampleCount;
     ici.mipLevels = 1;
     ici.arrayLayers = 1;
     ici.format = image_format;
@@ -302,7 +303,6 @@ image_create(VK& vk,
     ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     ici.usage = usage;
     ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT;
 
     Image image = {};
     VkResult r = vkCreateImage(vk.device, &ici, nullptr, &image.i);
@@ -604,6 +604,7 @@ main (int argc, char** argv, char** envp) {
 #ifdef NDEBUG
     bool validation_enabled = false;
 #else
+	LOG(INFO) << "Enabling validation layers...";
     bool validation_enabled = true;
     std::vector<const char *> layers_requested = {
         "VK_LAYER_LUNARG_standard_validation"
@@ -1061,17 +1062,17 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Render passes. */
     {
-        VkAttachmentDescription descriptions[2] = {};
+        VkAttachmentDescription descriptions[3] = {};
         descriptions[0].format = vk.swap.format.format;
-        descriptions[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        descriptions[0].samples = settings.sampleCount;
         descriptions[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         descriptions[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         descriptions[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         descriptions[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         descriptions[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        descriptions[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        descriptions[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         descriptions[1].format = format_find_depth(vk);
-        descriptions[1].samples = VK_SAMPLE_COUNT_1_BIT;
+        descriptions[1].samples = settings.sampleCount;
         descriptions[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         descriptions[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         descriptions[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -1079,18 +1080,30 @@ main (int argc, char** argv, char** envp) {
         descriptions[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         descriptions[1].finalLayout =
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		descriptions[2].format = vk.swap.format.format;
+		descriptions[2].samples = VK_SAMPLE_COUNT_1_BIT;
+		descriptions[2].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		descriptions[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		descriptions[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		descriptions[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+		descriptions[2].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		descriptions[2].finalLayout =
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        VkAttachmentReference refs[2] = {};
+        VkAttachmentReference refs[3] = {};
         refs[0].attachment = 0;
         refs[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         refs[1].attachment = 1;
         refs[1].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		refs[2].attachment = 2;
+		refs[2].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
         VkSubpassDescription subpass = {};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &refs[0];
         subpass.pDepthStencilAttachment = &refs[1];
+		subpass.pResolveAttachments = &refs[2];
 
         VkSubpassDependency dep = {};
         dep.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -1103,7 +1116,7 @@ main (int argc, char** argv, char** envp) {
 
         VkRenderPassCreateInfo cf = {};
         cf.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        cf.attachmentCount = 2;
+        cf.attachmentCount = 3;
         cf.pAttachments = descriptions;
         cf.subpassCount = 1;
         cf.pSubpasses = &subpass;
@@ -1243,8 +1256,8 @@ main (int argc, char** argv, char** envp) {
         multisampling.sType =
                 VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.sampleShadingEnable = VK_TRUE;
-		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-        multisampling.minSampleShading = 0.0f;
+		multisampling.rasterizationSamples = settings.sampleCount;
+        multisampling.minSampleShading = .2f;
         multisampling.pSampleMask = nullptr;
         multisampling.alphaToCoverageEnable = VK_FALSE;
         multisampling.alphaToOneEnable = VK_FALSE;
@@ -1254,12 +1267,12 @@ main (int argc, char** argv, char** envp) {
                                               VK_COLOR_COMPONENT_G_BIT |
                                               VK_COLOR_COMPONENT_B_BIT |
                                               VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment.blendEnable = VK_TRUE;
+		colorBlendAttachment.blendEnable = VK_TRUE;
         colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
         colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
         colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
         VkPipelineColorBlendStateCreateInfo colorBlending = {};
@@ -1488,7 +1501,6 @@ main (int argc, char** argv, char** envp) {
 
 	/* NOTE(jan): Colour buffer. */
 	{
-		auto format = vk.swap.format;
 		scene.colour = image_create(
 			vk,
 			{ vk.swap.extent.width, vk.swap.extent.height, 1 },
@@ -1517,7 +1529,7 @@ main (int argc, char** argv, char** envp) {
         scene.depth = image_create(
             vk,
             {vk.swap.extent.width, vk.swap.extent.height, 1},
-			VK_SAMPLE_COUNT_1_BIT,
+			settings.sampleCount,
             format,
             format,
             VK_IMAGE_TILING_OPTIMAL,
@@ -1535,18 +1547,19 @@ main (int argc, char** argv, char** envp) {
         );
     }
 
-    /* NOTE(jan): Framebuffer. */
+    /* NOTE(jan): Frame buffers. */
     {
         vk.swap.frames.resize(vk.swap.l);
         for (size_t i = 0; i < vk.swap.l; i++) {
             VkImageView attachments[] = {
+				scene.colour.v,
+                scene.depth.v,
                 vk.swap.images[i].v,
-                scene.depth.v
             };
             VkFramebufferCreateInfo cf = {};
             cf.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             cf.renderPass = pipeline.pass;
-            cf.attachmentCount = 2;
+            cf.attachmentCount = 3;
             cf.pAttachments = attachments;
             cf.width = vk.swap.extent.width;
             cf.height = vk.swap.extent.height;
@@ -1656,10 +1669,11 @@ main (int argc, char** argv, char** envp) {
         rpbi.framebuffer = vk.swap.frames[i];
         rpbi.renderArea.offset = {0, 0};
         rpbi.renderArea.extent = vk.swap.extent;
-        VkClearValue clear[2] = {};
+        VkClearValue clear[3] = {};
         clear[0].color = {1.0f, 1.0f, 1.0f, 0.0f};
         clear[1].depthStencil = {1.0f, 0};
-        rpbi.clearValueCount = 2;
+        clear[2].color = {1.0f, 1.0f, 1.0f, 0.0f};
+		rpbi.clearValueCount = 3;
         rpbi.pClearValues = clear;
         vkCmdBeginRenderPass(
             vk.swap.command_buffers[i], &rpbi, VK_SUBPASS_CONTENTS_INLINE
