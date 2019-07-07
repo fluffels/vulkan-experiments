@@ -108,8 +108,8 @@ struct Settings {
 Settings settings = {};
 std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
-auto eye = glm::vec3(8.95417f, -0.90874f, 12.2431f);
-auto at = glm::vec3(8.87782f, -0.85524f, 11.2475f);
+auto eye = glm::vec3(4.84618, -1.91234, 4.54172);
+auto at = glm::vec3(5.45624, -1.52875, 5.23503);
 auto up = glm::vec3(0.0f, 1.0f, 0.0f);
 int keyboard[GLFW_KEY_LAST] = {GLFW_RELEASE};
 
@@ -551,14 +551,17 @@ main (int argc, char** argv, char** envp) {
     }
 
     LOG(INFO) << "Generating model...";
+	const int extent = 10;
+	const int density = 2;
+	const int count = extent * density;
     {
-        for (int z = 0; z < 10; z++) {
-            for (int x = 0; x < 10; x++) {
+        for (int z = 0; z < count; z++) {
+            for (int x = 0; x < count; x++) {
                 Vertex vertex = {};
                 vertex.pos = {
-                    (float)x,
+                    x * (1/(float)density),
                     0.0f,
-                    (float)z
+                    z * (1/(float)density),
                 };
                 indices.push_back(vertices.size());
                 vertices.push_back(vertex);
@@ -1271,8 +1274,8 @@ main (int argc, char** argv, char** envp) {
         colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
         colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
         colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
         VkPipelineColorBlendStateCreateInfo colorBlending = {};

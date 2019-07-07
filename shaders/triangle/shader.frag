@@ -10,7 +10,7 @@ layout(location=0) in vec2 texCoord;
 void main() {
     outColor = texture(tex, texCoord);
 
-	if (outColor.a < 0.1) {
+	if (outColor.a < 0.85) {
 		discard;
 	}
 }
