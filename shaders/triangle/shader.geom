@@ -7,7 +7,7 @@ layout (binding=0) uniform Uniforms {
 } u;
 
 layout(points) in;
-layout(triangle_strip, max_vertices=6) out;
+layout(triangle_strip, max_vertices=4) out;
 
 layout(location=0) out vec2 texCoord;
 
@@ -17,37 +17,23 @@ void main() {
 
     origin = gl_in[0].gl_Position;
 
-    pos = origin + vec4(0.0, 0.0, 0.5, 0.0);
-    gl_Position = u.proj * u.view * u.model * pos;
+	pos = origin + vec4(0.0, -1.0, 0.5, 0.0);
+	gl_Position = u.proj * u.view * u.model * pos;
+	texCoord = vec2(0.0f, 0.0f);
+	EmitVertex();
+
+	pos = origin + vec4(0.0, 0.0, 0.5, 0.0);
+	gl_Position = u.proj * u.view * u.model * pos;
 	texCoord = vec2(0.0f, 1.0f);
-    EmitVertex();
+	EmitVertex();
+
+	pos = origin + vec4(1.0, -1.0, 0.5, 0.0);
+	gl_Position = u.proj * u.view * u.model * pos;
+	texCoord = vec2(1.0f, 0.0f);
+	EmitVertex();
 
     pos = origin + vec4(1.0, 0.0, 0.5, 0.0);
     gl_Position = u.proj * u.view * u.model * pos;
 	texCoord = vec2(1.0f, 1.0f);
     EmitVertex();
-
-    pos = origin + vec4(1.0, -1.0, 0.5, 0.0);
-    gl_Position = u.proj * u.view * u.model * pos;
-	texCoord = vec2(1.0f, 0.0f);
-    EmitVertex();
-
-    EndPrimitive();
-
-    pos = origin + vec4(0.0, 0.0, 0.5, 0.0);
-    gl_Position = u.proj * u.view * u.model * pos;
-	texCoord = vec2(0.0f, 1.0f);
-    EmitVertex();
-
-    pos = origin + vec4(1.0, -1.0, 0.5, 0.0);
-    gl_Position = u.proj * u.view * u.model * pos;
-	texCoord = vec2(1.0f, 0.0f);
-    EmitVertex();
-
-    pos = origin + vec4(0.0, -1.0, 0.5, 0.0);
-    gl_Position = u.proj * u.view * u.model * pos;
-	texCoord = vec2(0.0f, 0.0f);
-    EmitVertex();
-
-	EndPrimitive();
 }
