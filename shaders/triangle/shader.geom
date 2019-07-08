@@ -17,22 +17,22 @@ void main() {
 
     origin = u.view * u.model * gl_in[0].gl_Position;
 
-	pos = origin + vec4(0.0, -1.0, 0.5, 0.0);
+	pos = origin + vec4(0.0, -1.0, 0.0, 0.0);
 	gl_Position = u.proj * pos;
 	texCoord = vec2(0.0f, 0.0f);
 	EmitVertex();
 
-	pos = origin + vec4(0.0, 0.0, 0.5, 0.0);
+	pos = origin + vec4(0.0, 0.0, 0.0, 0.0);
 	gl_Position = u.proj * pos;
 	texCoord = vec2(0.0f, 1.0f);
 	EmitVertex();
 
-	pos = origin + vec4(1.0, -1.0, 0.5, 0.0);
+	pos = origin + vec4(1.0, -1.0, 0.0, 0.0);
 	gl_Position = u.proj * pos;
 	texCoord = vec2(1.0f, 0.0f);
 	EmitVertex();
 
-    pos = origin + vec4(1.0, 0.0, 0.5, 0.0);
+    pos = origin + vec4(1.0, 0.0, 0.0, 0.0);
 	gl_Position = u.proj * pos;
 	texCoord = vec2(1.0f, 1.0f);
     EmitVertex();

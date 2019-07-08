@@ -14,20 +14,32 @@ set_target_properties(
     VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}
 )
 add_custom_target(
-        vert.spv
+        triangle_vert
         WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}/shaders/triangle
         COMMAND $ENV{VULKAN_SDK}/bin/glslangValidator -V shader.vert
 )
-add_dependencies(main vert.spv)
+add_dependencies(main triangle_vert)
 add_custom_target(
-        geom.spv
+        triangle_geom
         WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}/shaders/triangle
         COMMAND $ENV{VULKAN_SDK}/bin/glslangValidator -V shader.geom
 )
-add_dependencies(main geom.spv)
+add_dependencies(main triangle_geom)
 add_custom_target(
-        frag.spv
+        triangle_frag
         WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}/shaders/triangle
         COMMAND $ENV{VULKAN_SDK}/bin/glslangValidator -V shader.frag
 )
-add_dependencies(main frag.spv)
+add_dependencies(main triangle_frag)
+add_custom_target(
+        ground_vert
+        WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}/shaders/ground
+        COMMAND $ENV{VULKAN_SDK}/bin/glslangValidator -V shader.vert
+)
+add_dependencies(main ground_vert)
+add_custom_target(
+        ground_frag
+        WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}/shaders/ground
+        COMMAND $ENV{VULKAN_SDK}/bin/glslangValidator -V shader.frag
+)
+add_dependencies(main ground_frag)

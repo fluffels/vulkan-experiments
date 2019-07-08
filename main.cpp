@@ -108,6 +108,13 @@ struct Settings {
 Settings settings = {};
 std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
+Vertex groundVertices[] = {
+	glm::vec3(-1.0f, 0.0f, -1.0f),
+	glm::vec3(11.0f, 0.0f, -1.0f),
+	glm::vec3(-1.0f, 0.0f, 11.0f),
+	glm::vec3(11.0f, 0.0f, 11.0f),
+};
+Buffer groundBuffer;
 auto eye = glm::vec3(4.84618, -1.91234, 4.54172);
 auto at = glm::vec3(5.45624, -1.52875, 5.23503);
 auto up = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -552,7 +559,7 @@ main (int argc, char** argv, char** envp) {
 
     LOG(INFO) << "Generating model...";
 	const int extent = 10;
-	const int density = 2;
+	const int density = 1;
 	const int count = extent * density;
     {
         for (int z = 0; z < count; z++) {
@@ -1062,6 +1069,7 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): The render passes and descriptor sets below start the
      * pipeline creation process. */
     Pipeline pipeline = {};
+	Pipeline grassPipeline = {};
 
     /* NOTE(jan): Render passes. */
     {
@@ -1091,7 +1099,7 @@ main (int argc, char** argv, char** envp) {
 		descriptions[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
 		descriptions[2].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		descriptions[2].finalLayout =
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
         VkAttachmentReference refs[3] = {};
         refs[0].attachment = 0;
@@ -1099,7 +1107,7 @@ main (int argc, char** argv, char** envp) {
         refs[1].attachment = 1;
         refs[1].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		refs[2].attachment = 2;
-		refs[2].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		refs[2].layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
         VkSubpassDescription subpass = {};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -1131,6 +1139,7 @@ main (int argc, char** argv, char** envp) {
             "Could not create render pass."
         );
     }
+	grassPipeline.pass = pipeline.pass;
 
     /* NOTE(jan): Descriptor set. */
     {
@@ -1138,7 +1147,7 @@ main (int argc, char** argv, char** envp) {
         bindings[0].binding = 0;
         bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[0].descriptorCount = 1;
-        bindings[0].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT;
+		bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT;
         bindings[0].pImmutableSamplers = nullptr;
         bindings[1].binding = 1;
         bindings[1].descriptorCount = 1;
@@ -1160,6 +1169,7 @@ main (int argc, char** argv, char** envp) {
     }
 
     /* NOTE(jan): Create pipeline. */
+	LOG(INFO) << "Creating billboard pipeline...";
     {
         auto code = read_file("shaders/triangle/vert.spv");
         pipeline.vert = create_shader_module(vk, code);
@@ -1248,7 +1258,7 @@ main (int argc, char** argv, char** envp) {
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth = 1.0f;
-        rasterizer.cullMode = VK_CULL_MODE_NONE;
+        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
         rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterizer.depthBiasEnable = VK_FALSE;
         rasterizer.depthBiasConstantFactor = 0.0f;
@@ -1347,7 +1357,184 @@ main (int argc, char** argv, char** envp) {
         vkDestroyShaderModule(vk.device, pipeline.vert, nullptr);
     }
 
+    /* NOTE(jan): Create pipeline. */
+	LOG(INFO) << "Creating grass pipeline...";
+    {
+        auto code = read_file("shaders/ground/vert.spv");
+        grassPipeline.vert = create_shader_module(vk, code);
+        code = read_file("shaders/ground/frag.spv");
+        grassPipeline.frag = create_shader_module(vk, code);
+
+        VkPipelineShaderStageCreateInfo vert = {};
+        vert.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vert.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vert.module = grassPipeline.vert;
+        vert.pName = "main";
+
+        VkPipelineShaderStageCreateInfo frag = {};
+        frag.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        frag.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        frag.module = grassPipeline.frag;
+        frag.pName = "main";
+
+        std::vector<VkPipelineShaderStageCreateInfo> stages = {
+            vert,
+            frag
+        };
+
+        VkVertexInputBindingDescription vibd = {};
+        vibd.binding = 0;
+        vibd.stride = sizeof(Vertex);
+        vibd.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        VkVertexInputAttributeDescription viads[1] = {};
+        viads[0].binding = 0;
+        viads[0].location = 0;
+        viads[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        viads[0].offset = offsetof(Vertex, pos);
+
+        VkPipelineVertexInputStateCreateInfo visci = {};
+        visci.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        visci.vertexBindingDescriptionCount = 1;
+        visci.pVertexBindingDescriptions = &vibd;
+        visci.vertexAttributeDescriptionCount = 1;
+        visci.pVertexAttributeDescriptions = viads;
+
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+        inputAssembly.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+        inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+        VkViewport viewport = {};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float)vk.swap.extent.width;
+        viewport.height = (float)vk.swap.extent.height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+
+        VkRect2D scissor = {};
+        scissor.offset = {0, 0};
+        scissor.extent = vk.swap.extent;
+
+        VkPipelineViewportStateCreateInfo viewportState = {};
+        viewportState.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.viewportCount = 1;
+        viewportState.pViewports = &viewport;
+        viewportState.scissorCount = 1;
+        viewportState.pScissors = &scissor;
+
+        VkPipelineRasterizationStateCreateInfo rasterizer = {};
+        rasterizer.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        /* NOTE(jan): VK_TRUE is useful for shadow maps. */
+        rasterizer.depthClampEnable = VK_FALSE;
+        rasterizer.rasterizerDiscardEnable = VK_FALSE;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_NONE;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizer.depthBiasEnable = VK_FALSE;
+        rasterizer.depthBiasConstantFactor = 0.0f;
+        rasterizer.depthBiasClamp = 0.0f;
+        rasterizer.depthBiasSlopeFactor = 0.0f;
+
+        VkPipelineMultisampleStateCreateInfo multisampling = {};
+        multisampling.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.sampleShadingEnable = VK_TRUE;
+		multisampling.rasterizationSamples = settings.sampleCount;
+        multisampling.minSampleShading = .2f;
+        multisampling.pSampleMask = nullptr;
+        multisampling.alphaToCoverageEnable = VK_FALSE;
+        multisampling.alphaToOneEnable = VK_FALSE;
+
+        VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                                              VK_COLOR_COMPONENT_G_BIT |
+                                              VK_COLOR_COMPONENT_B_BIT |
+                                              VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.blendEnable = VK_TRUE;
+        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+        VkPipelineColorBlendStateCreateInfo colorBlending = {};
+        colorBlending.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.logicOpEnable = VK_FALSE;
+        colorBlending.logicOp = VK_LOGIC_OP_COPY;
+        colorBlending.attachmentCount = 1;
+        colorBlending.pAttachments = &colorBlendAttachment;
+        colorBlending.blendConstants[0] = 0.0f;
+        colorBlending.blendConstants[1] = 0.0f;
+        colorBlending.blendConstants[2] = 0.0f;
+        colorBlending.blendConstants[3] = 0.0f;
+
+        VkPipelineLayoutCreateInfo layoutCreateInfo = {};
+        layoutCreateInfo.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        layoutCreateInfo.setLayoutCount = 1;
+        layoutCreateInfo.pSetLayouts = &pipeline.descriptorSetLayout;
+        layoutCreateInfo.pushConstantRangeCount = 0;
+        layoutCreateInfo.pPushConstantRanges = nullptr;
+        vk_check_success(
+            vkCreatePipelineLayout(
+                vk.device, &layoutCreateInfo, nullptr, &grassPipeline.layout
+            ),
+            "Could not create grassPipeline layout."
+        );
+
+        VkPipelineDepthStencilStateCreateInfo dssci = {};
+        dssci.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        dssci.depthTestEnable = VK_TRUE;
+        dssci.depthWriteEnable = VK_TRUE;
+        dssci.depthCompareOp = VK_COMPARE_OP_LESS;
+        dssci.depthBoundsTestEnable = VK_FALSE;
+        dssci.front = {};
+        dssci.back = {};
+
+        VkGraphicsPipelineCreateInfo pipelineInfo = {};
+        pipelineInfo.sType =
+                VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = stages.size();
+        pipelineInfo.pStages = stages.data();
+        pipelineInfo.pVertexInputState = &visci;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pDepthStencilState = &dssci;
+        pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = nullptr;
+        pipelineInfo.layout = grassPipeline.layout;
+        pipelineInfo.renderPass = grassPipeline.pass;
+        pipelineInfo.subpass = 0;
+        /* NOTE(jan): Used to derive pipelines. */
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        pipelineInfo.basePipelineIndex = -1;
+
+        vk_check_success(
+            vkCreateGraphicsPipelines(
+                vk.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
+                &grassPipeline.handle
+            ),
+            "Could not create graphics pipeline."
+        );
+
+        vkDestroyShaderModule(vk.device, grassPipeline.frag, nullptr);
+        vkDestroyShaderModule(vk.device, grassPipeline.vert, nullptr);
+    }
+
     /* NOTE(jan): Command pool creation. */
+	LOG(INFO) << "Create command pools...";
     VkCommandPool command_pool;
     {
         VkCommandPoolCreateInfo cf = {};
@@ -1366,6 +1553,12 @@ main (int argc, char** argv, char** envp) {
         scene.vertices = buffer_create_and_initialize(
             vk, command_pool, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size,
             (void *) vertices.data()
+        );
+
+        size = sizeof(groundVertices);
+        groundBuffer = buffer_create_and_initialize(
+            vk, command_pool, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size,
+            (void *) groundVertices
         );
     }
 
@@ -1681,10 +1874,6 @@ main (int argc, char** argv, char** envp) {
         vkCmdBeginRenderPass(
             vk.swap.command_buffers[i], &rpbi, VK_SUBPASS_CONTENTS_INLINE
         );
-        vkCmdBindPipeline(
-            vk.swap.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
-            pipeline.handle
-        );
         vkCmdBindDescriptorSets(
             vk.swap.command_buffers[i],
             VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1693,8 +1882,29 @@ main (int argc, char** argv, char** envp) {
             &pipeline.descriptorSet,
             0, nullptr
         );
-        VkBuffer vertex_buffers[] = {scene.vertices.b};
         VkDeviceSize offsets[] = {0};
+        vkCmdBindPipeline(
+            vk.swap.command_buffers[i],
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+            grassPipeline.handle
+        );
+		VkBuffer ground_vertex_buffers[] = { groundBuffer.b };
+		vkCmdBindVertexBuffers(
+			vk.swap.command_buffers[i],
+			0, 1,
+			ground_vertex_buffers,
+			offsets
+		);
+		vkCmdDraw(
+			vk.swap.command_buffers[i], 4,
+			1, 0, 0
+		);
+
+        vkCmdBindPipeline(
+            vk.swap.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+            pipeline.handle
+        );
+        VkBuffer vertex_buffers[] = {scene.vertices.b};
         vkCmdBindVertexBuffers(
             vk.swap.command_buffers[i], 0, 1, vertex_buffers, offsets
         );
@@ -1937,10 +2147,15 @@ main (int argc, char** argv, char** envp) {
     vkDestroyBuffer(vk.device, scene.indices.b, nullptr);
     vkFreeMemory(vk.device, scene.vertices.m, nullptr);
     vkDestroyBuffer(vk.device, scene.vertices.b, nullptr);
+    vkFreeMemory(vk.device, groundBuffer.m, nullptr);
+    vkDestroyBuffer(vk.device, groundBuffer.b, nullptr);
     vkFreeMemory(vk.device, scene.uniforms.m, nullptr);
     vkDestroyBuffer(vk.device, scene.uniforms.b, nullptr);
     vkDestroyDescriptorPool(
         vk.device, pipeline.descriptorPool, nullptr
+    );
+    vkDestroyDescriptorPool(
+        vk.device, grassPipeline.descriptorPool, nullptr
     );
     vkDestroyCommandPool(vk.device, command_pool, nullptr);
     for (const auto& f: vk.swap.frames) {
@@ -1952,6 +2167,11 @@ main (int argc, char** argv, char** envp) {
         vk.device, pipeline.descriptorSetLayout, nullptr
     );
     vkDestroyRenderPass(vk.device, pipeline.pass, nullptr);
+    vkDestroyPipeline(vk.device, grassPipeline.handle, nullptr);
+    vkDestroyPipelineLayout(vk.device, grassPipeline.layout, nullptr);
+    vkDestroyDescriptorSetLayout(
+        vk.device, grassPipeline.descriptorSetLayout, nullptr
+    );
     for (const auto& i: vk.swap.images) {
         vkDestroyImageView(vk.device, i.v, nullptr);
     }
