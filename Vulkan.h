@@ -208,5 +208,20 @@ public:
         );
         return result;
     }
-};
 
+    VkShaderModule
+    createShaderModule(const std::vector<char>& code) {
+        VkShaderModule result;
+        {
+            VkShaderModuleCreateInfo i = {};
+            i.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            i.codeSize = code.size();
+            i.pCode = reinterpret_cast<const uint32_t*>(code.data());
+            vk_check_success(
+                vkCreateShaderModule(this->device, &i, nullptr, &result),
+                "Could not create shader module."
+            );
+        }
+        return result;
+    }
+};

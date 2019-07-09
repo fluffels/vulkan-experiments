@@ -134,21 +134,6 @@ read_file(const std::string &path) {
     return buffer;
 }
 
-VkShaderModule
-create_shader_module(VK& vk,
-                     const std::vector<char> &code) {
-    VkShaderModuleCreateInfo c = {};
-    c.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    c.codeSize = code.size();
-    c.pCode = reinterpret_cast<const uint32_t*>(code.data());
-    VkShaderModule module;
-    vk_check_success(
-        vkCreateShaderModule(vk.device, &c, nullptr, &module),
-        "Could not create shader module."
-    );
-    return module;
-}
-
 VkFormat
 format_select_best_supported(VK& vk,
                              const std::vector<VkFormat>& candidates,
@@ -973,11 +958,11 @@ main (int argc, char** argv, char** envp) {
 	LOG(INFO) << "Creating billboard pipeline...";
     {
         auto code = read_file("shaders/triangle/vert.spv");
-        pipeline.vert = create_shader_module(vk, code);
+        pipeline.vert = vk.createShaderModule(code);
         code = read_file("shaders/triangle/frag.spv");
-        pipeline.frag = create_shader_module(vk, code);
+        pipeline.frag = vk.createShaderModule(code);
         code = read_file("shaders/triangle/geom.spv");
-        pipeline.geom = create_shader_module(vk, code);
+        pipeline.geom = vk.createShaderModule(code);
 
         VkPipelineShaderStageCreateInfo vert = {};
         vert.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1162,9 +1147,9 @@ main (int argc, char** argv, char** envp) {
 	LOG(INFO) << "Creating grass pipeline...";
     {
         auto code = read_file("shaders/ground/vert.spv");
-        grassPipeline.vert = create_shader_module(vk, code);
+        grassPipeline.vert = vk.createShaderModule(code);
         code = read_file("shaders/ground/frag.spv");
-        grassPipeline.frag = create_shader_module(vk, code);
+        grassPipeline.frag = vk.createShaderModule(code);
 
         VkPipelineShaderStageCreateInfo vert = {};
         vert.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
