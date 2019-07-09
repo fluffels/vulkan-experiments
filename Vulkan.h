@@ -111,38 +111,6 @@ public:
 		return memory_type;
 	}
 
-	Buffer
-	createBuffer(VkBufferUsageFlags usage,
-		         VkMemoryPropertyFlags memoryProperties,
-		         VkDeviceSize size) const {
-		Buffer result;
-		{
-			VkBufferCreateInfo i = {};
-			i.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			i.size = size;
-			i.usage = usage;
-			i.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-			VkResult r = vkCreateBuffer(device, &i, nullptr, &result.buffer);
-			vk_check_success(r, "could not create buffer");
-		}
-		VkMemoryRequirements memoryRequirements;
-		vkGetBufferMemoryRequirements(device, result.buffer, &memoryRequirements);
-		{
-			VkMemoryAllocateInfo i = {};
-			i.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			i.allocationSize = memoryRequirements.size;
-			i.memoryTypeIndex = this->findMemoryType(
-				memoryRequirements, memoryProperties
-			);
-			VkResult r = vkAllocateMemory(
-				this->device, &i, nullptr, &result.memory
-			);
-			vk_check_success(r, "could not allocate memmory");
-		}
-		vkBindBufferMemory(this->device, result.buffer, result.memory, 0);
-		return result;
-	}
-
     VkCommandBuffer
     startCommand() const {
         /* TODO(jan): Create a separate command pool for short lived buffers and
@@ -179,6 +147,38 @@ public:
         vkQueueWaitIdle(this->queues.graphics.q);
         vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);
     }
+
+	Buffer
+	createBuffer(VkBufferUsageFlags usage,
+		         VkMemoryPropertyFlags memoryProperties,
+		         VkDeviceSize size) const {
+		Buffer result;
+		{
+			VkBufferCreateInfo i = {};
+			i.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+			i.size = size;
+			i.usage = usage;
+			i.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			VkResult r = vkCreateBuffer(device, &i, nullptr, &result.buffer);
+			vk_check_success(r, "could not create buffer");
+		}
+		VkMemoryRequirements memoryRequirements;
+		vkGetBufferMemoryRequirements(device, result.buffer, &memoryRequirements);
+		{
+			VkMemoryAllocateInfo i = {};
+			i.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			i.allocationSize = memoryRequirements.size;
+			i.memoryTypeIndex = this->findMemoryType(
+				memoryRequirements, memoryProperties
+			);
+			VkResult r = vkAllocateMemory(
+				this->device, &i, nullptr, &result.memory
+			);
+			vk_check_success(r, "could not allocate memmory");
+		}
+		vkBindBufferMemory(this->device, result.buffer, result.memory, 0);
+		return result;
+	}
 
 	Buffer
     createDeviceLocalBuffer(
