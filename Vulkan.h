@@ -87,8 +87,8 @@ public:
 	VkSampleCountFlagBits sampleCount;
 
 	uint32_t
-		findMemoryType(const VkMemoryRequirements requirements,
-			const VkMemoryPropertyFlags properties) const {
+    findMemoryType(const VkMemoryRequirements requirements,
+                   const VkMemoryPropertyFlags properties) const {
 		VkPhysicalDeviceMemoryProperties pdmp;
 		vkGetPhysicalDeviceMemoryProperties(physical_device, &pdmp);
 
