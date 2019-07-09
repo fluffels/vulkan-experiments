@@ -111,6 +111,25 @@ public:
 		return memory_type;
 	}
 
+    VkDeviceMemory
+    allocateMemory(
+        VkMemoryRequirements memoryRequirements,
+        VkMemoryPropertyFlags memoryProperties
+    ) const {
+        VkMemoryAllocateInfo i = {};
+        i.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        i.allocationSize = memoryRequirements.size;
+        i.memoryTypeIndex = this->findMemoryType(
+            memoryRequirements, memoryProperties
+        );
+        VkDeviceMemory result = {};
+        VkResult r = vkAllocateMemory(
+            this->device, &i, nullptr, &result
+        );
+        vk_check_success(r, "could not allocate memory");
+        return result;
+    }
+
     VkCommandBuffer
     startCommand() const {
         /* TODO(jan): Create a separate command pool for short lived buffers and
@@ -164,18 +183,9 @@ public:
 		}
 		VkMemoryRequirements memoryRequirements;
 		vkGetBufferMemoryRequirements(device, result.buffer, &memoryRequirements);
-		{
-			VkMemoryAllocateInfo i = {};
-			i.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			i.allocationSize = memoryRequirements.size;
-			i.memoryTypeIndex = this->findMemoryType(
-				memoryRequirements, memoryProperties
-			);
-			VkResult r = vkAllocateMemory(
-				this->device, &i, nullptr, &result.memory
-			);
-			vk_check_success(r, "could not allocate memmory");
-		}
+        result.memory = this->allocateMemory(
+            memoryRequirements, memoryProperties
+        );
 		vkBindBufferMemory(this->device, result.buffer, result.memory, 0);
 		return result;
 	}
@@ -234,6 +244,62 @@ public:
             vector_size(indices),
             (void*)indices.data()
         );
+        return result;
+    }
+
+    Image
+    createImage(VkExtent3D extent,
+                 VkSampleCountFlagBits sampleCount,
+                 VkFormat imageFormat,
+                 VkFormat viewFormat,
+                 VkImageTiling tiling,
+                 VkImageUsageFlags usage,
+                 VkMemoryPropertyFlags memoryProperties,
+                 VkImageAspectFlags aspects) {
+        Image result = {};
+        {
+            VkImageCreateInfo i = {};
+            i.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            i.imageType = VK_IMAGE_TYPE_2D;
+            i.extent = extent;
+            i.samples = sampleCount;
+            i.mipLevels = 1;
+            i.arrayLayers = 1;
+            i.format = imageFormat;
+            i.tiling = tiling;
+            i.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            i.usage = usage;
+            i.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+            VkResult r = vkCreateImage(this->device, &i, nullptr, &result.i);
+            if (r != VK_SUCCESS) {
+                throw std::runtime_error("Could not create image.");
+            }
+        }
+        VkMemoryRequirements memoryRequirements;
+        vkGetImageMemoryRequirements(this->device, result.i, &memoryRequirements);
+        result.m = this->allocateMemory(
+            memoryRequirements, memoryProperties
+        );
+        vkBindImageMemory(this->device, result.i, result.m, 0);
+        {
+            VkImageViewCreateInfo i = {};
+            i.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            i.image = result.i;
+            i.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            i.format = viewFormat;
+            i.subresourceRange.layerCount = 1;
+            i.subresourceRange.baseArrayLayer = 0;
+            i.subresourceRange.aspectMask = aspects;
+            i.subresourceRange.baseMipLevel = 0;
+            i.subresourceRange.levelCount = 1;
+            VkResult r = vkCreateImageView(
+                this->device, &i, nullptr, &result.v
+            );
+            if (r != VK_SUCCESS) {
+                throw std::runtime_error("Could not create image view.");
+            }
+        }
         return result;
     }
 

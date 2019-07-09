@@ -150,69 +150,6 @@ format_find_depth(VK& vk) {
     return format_select_best_supported(vk, candidates, tiling, features);
 }
 
-Image
-image_create(VK& vk,
-             VkExtent3D extent,
-			 VkSampleCountFlagBits sampleCount,
-             VkFormat image_format,
-             VkFormat view_format,
-             VkImageTiling tiling,
-             VkImageUsageFlags usage,
-             VkMemoryPropertyFlags properties,
-             VkImageAspectFlags aspects) {
-    VkImageCreateInfo ici = {};
-    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ici.imageType = VK_IMAGE_TYPE_2D;
-    ici.extent = extent;
-	ici.samples = sampleCount;
-    ici.mipLevels = 1;
-    ici.arrayLayers = 1;
-    ici.format = image_format;
-    ici.tiling = tiling;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    ici.usage = usage;
-    ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    Image image = {};
-    VkResult r = vkCreateImage(vk.device, &ici, nullptr, &image.i);
-    if (r != VK_SUCCESS) {
-        throw std::runtime_error("Could not create image.");
-    }
-
-    VkMemoryRequirements mr;
-    vkGetImageMemoryRequirements(vk.device, image.i, &mr);
-
-    VkMemoryAllocateInfo mai = {};
-    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    mai.allocationSize = mr.size;
-    mai.memoryTypeIndex = vk.findMemoryType(mr, properties);
-
-    r = vkAllocateMemory(vk.device, &mai, nullptr, &image.m);
-    if (r != VK_SUCCESS) {
-        throw std::runtime_error("Could not allocate image.");
-    }
-
-    vkBindImageMemory(vk.device, image.i, image.m, 0);
-
-    VkImageViewCreateInfo ivci = {};
-    ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    ivci.image = image.i;
-    ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    ivci.format = view_format;
-    ivci.subresourceRange.layerCount = 1;
-    ivci.subresourceRange.baseArrayLayer = 0;
-    ivci.subresourceRange.aspectMask = aspects;
-    ivci.subresourceRange.baseMipLevel = 0;
-    ivci.subresourceRange.levelCount = 1;
-
-    r = vkCreateImageView(vk.device, &ivci, nullptr, &image.v);
-    if (r != VK_SUCCESS) {
-        throw std::runtime_error("Could not create image view.");
-    }
-
-    return image;
-}
-
 void
 image_transition(const VK& vk,
                  const VkCommandPool cp,
@@ -1008,8 +945,7 @@ main (int argc, char** argv, char** envp) {
         vkUnmapMemory(vk.device, staging.memory);
         stbi_image_free(pixels);
 
-        scene.texture = image_create(
-            vk,
+        scene.texture = vk.createImage(
             {
                 static_cast<uint32_t>(width),
                 static_cast<uint32_t>(height),
@@ -1096,8 +1032,7 @@ main (int argc, char** argv, char** envp) {
 
 	/* NOTE(jan): Colour buffer. */
 	{
-		scene.colour = image_create(
-			vk,
+		scene.colour = vk.createImage(
 			{ vk.swap.extent.width, vk.swap.extent.height, 1 },
 			vk.sampleCount,
 			vk.swap.format.format,
@@ -1121,8 +1056,7 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Depth buffer. */
     {
         auto format = format_find_depth(vk);
-        scene.depth = image_create(
-            vk,
+        scene.depth = vk.createImage(
             {vk.swap.extent.width, vk.swap.extent.height, 1},
 			vk.sampleCount,
             format,
