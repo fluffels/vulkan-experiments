@@ -24,65 +24,15 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
+#include "Memory.h"
+#include "NotImplementedError.h"
+#include "Buffer.h"
+#include "Vulkan.h"
+#include "VertexBuffer.h"
+
 struct Coord {
     double x;
     double y;
-};
-
-struct Buffer {
-    VkBuffer b;
-    VkDeviceMemory m;
-};
-
-struct Image {
-    VkImage i;
-    VkImageView v;
-    VkDeviceMemory m;
-    VkSampler s;
-};
-
-struct Vertex {
-    glm::vec3 pos;
-};
-
-struct Queue {
-    VkQueue q;
-    int family_index;
-};
-
-struct Queues {
-    Queue graphics;
-    Queue present;
-};
-
-struct SwapChain {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    VkSurfaceFormatKHR format;
-    std::vector<VkPresentModeKHR> modes;
-    VkPresentModeKHR mode;
-    VkExtent2D extent;
-    uint32_t l;
-    VkSwapchainKHR h;
-    std::vector<Image> images;
-    std::vector<VkFramebuffer> frames;
-    std::vector<VkCommandBuffer> command_buffers;
-    VkSemaphore image_available;
-    VkSemaphore render_finished;
-};
-
-/**
- * The VK structure contains all information related to the Vulkan API, logical
- * and physical devices, and window management.
- * Its members should be invariant across scenes.
- */
-struct VK {
-    VkDevice device;
-    VkInstance h;
-    VkPhysicalDevice physical_device;
-    VkSurfaceKHR surface;
-    Queues queues;
-    SwapChain swap;
 };
 
 struct MVP {
@@ -120,12 +70,6 @@ auto at = glm::vec3(5.45624, -1.52875, 5.23503);
 auto up = glm::vec3(0.0f, 1.0f, 0.0f);
 int keyboard[GLFW_KEY_LAST] = {GLFW_RELEASE};
 
-template<class T> size_t
-vector_size(const std::vector<T>& v) {
-    size_t result = sizeof(v[0]) * v.size();
-    return result;
-}
-
 struct Pipeline {
     VkShaderModule vert;
     VkShaderModule frag;
@@ -146,14 +90,6 @@ const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH = 800;
 
 INITIALIZE_EASYLOGGINGPP
-
-void
-vk_check_success(VkResult r,
-                 const char *msg) {
-    if (r != VK_SUCCESS) {
-        throw(std::runtime_error(msg));
-    }
-}
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debug_callback(VkDebugReportFlagsEXT flags,
@@ -262,32 +198,6 @@ format_find_depth(VK& vk) {
     return format_select_best_supported(vk, candidates, tiling, features);
 }
 
-uint32_t
-memory_find_type(const VK& vk,
-                 const VkMemoryRequirements requirements,
-                 const VkMemoryPropertyFlags properties) {
-    VkPhysicalDeviceMemoryProperties pdmp;
-    vkGetPhysicalDeviceMemoryProperties(vk.physical_device, &pdmp);
-
-    VkBool32 found = VK_FALSE;
-    uint32_t memory_type = 0;
-    auto typeFilter = requirements.memoryTypeBits;
-    for (uint32_t i = 0; i < pdmp.memoryTypeCount; i++) {
-        auto& type = pdmp.memoryTypes[i];
-        auto check_type = typeFilter & (i << i);
-        auto check_flags = type.propertyFlags & properties;
-        if (check_type && check_flags) {
-            found = true;
-            memory_type = i;
-            break;
-        }
-    }
-    if (!found) {
-        throw std::runtime_error("Suitable buffer memory not found");
-    }
-    return memory_type;
-}
-
 Image
 image_create(VK& vk,
              VkExtent3D extent,
@@ -323,7 +233,7 @@ image_create(VK& vk,
     VkMemoryAllocateInfo mai = {};
     mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     mai.allocationSize = mr.size;
-    mai.memoryTypeIndex = memory_find_type(vk, mr, properties);
+    mai.memoryTypeIndex = vk.findMemoryType(mr, properties);
 
     r = vkAllocateMemory(vk.device, &mai, nullptr, &image.m);
     if (r != VK_SUCCESS) {
@@ -469,59 +379,24 @@ image_transition(const VK& vk,
 }
 
 Buffer
-buffer_create(const VK& vk,
-              const VkBufferUsageFlags usage,
-              const VkMemoryPropertyFlags required_memory_properties,
-              const VkDeviceSize size) {
-    Buffer buffer = {};
-
-    VkBufferCreateInfo bci = {};
-    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bci.size = size;
-    bci.usage = usage;
-    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    vk_check_success(
-        vkCreateBuffer(vk.device, &bci, nullptr, &buffer.b),
-        "Could not create buffer."
-    );
-
-    VkMemoryRequirements mr;
-    vkGetBufferMemoryRequirements(vk.device, buffer.b, &mr);
-
-    VkMemoryAllocateInfo mai = {};
-    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    mai.allocationSize = mr.size;
-    mai.memoryTypeIndex = memory_find_type(vk, mr, required_memory_properties);
-    vk_check_success(
-        vkAllocateMemory(vk.device, &mai, nullptr, &buffer.m),
-        "Could not allocate buffer memory."
-    );
-    vkBindBufferMemory(vk.device, buffer.b, buffer.m, 0);
-
-    return buffer;
-}
-
-Buffer
 buffer_create_and_initialize(const VK& vk,
                              const VkCommandPool& cp,
                              VkBufferUsageFlags usage,
                              VkDeviceSize size,
                              void *contents) {
-    auto staging = buffer_create(
-            vk,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            size
+    auto staging = vk.createBuffer(
+       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+       size
     );
 
     void* data;
-    vkMapMemory(vk.device, staging.m, 0, size, 0, &data);
+    vkMapMemory(vk.device, staging.memory, 0, size, 0, &data);
     memcpy(data, contents, (size_t)size);
-    vkUnmapMemory(vk.device, staging.m);
+    vkUnmapMemory(vk.device, staging.memory);
 
-    auto buffer = buffer_create(
-        vk,
+    auto buffer = vk.createBuffer(
         usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         size
@@ -530,11 +405,11 @@ buffer_create_and_initialize(const VK& vk,
     auto cb = command_one_off_start(vk, cp);
     VkBufferCopy bc = {};
     bc.size = size;
-    vkCmdCopyBuffer(cb, staging.b, buffer.b, 1, &bc);
+    vkCmdCopyBuffer(cb, staging.buffer, buffer.buffer, 1, &bc);
     command_one_off_stop_and_submit(vk, cp, cb);
 
-    vkDestroyBuffer(vk.device, staging.b, nullptr);
-    vkFreeMemory(vk.device, staging.m, nullptr);
+    vkDestroyBuffer(vk.device, staging.buffer, nullptr);
+    vkFreeMemory(vk.device, staging.memory, nullptr);
 
     return buffer;
 }
@@ -1574,8 +1449,7 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Uniform buffer. */
     {
         VkDeviceSize size = sizeof(scene.mvp);
-        scene.uniforms = buffer_create(
-            vk,
+        scene.uniforms = vk.createBuffer(
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -1595,8 +1469,7 @@ main (int argc, char** argv, char** envp) {
             throw std::runtime_error("Could not load texture.");
         }
         auto length = width * height * 4;
-        auto staging = buffer_create(
-            vk,
+        auto staging = vk.createBuffer(
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -1604,9 +1477,9 @@ main (int argc, char** argv, char** envp) {
         );
         void* data;
         auto dsize = (VkDeviceSize)length;
-        vkMapMemory(vk.device, staging.m, 0, dsize, 0, &data);
+        vkMapMemory(vk.device, staging.memory, 0, dsize, 0, &data);
             memcpy(data, pixels, length);
-        vkUnmapMemory(vk.device, staging.m);
+        vkUnmapMemory(vk.device, staging.memory);
         stbi_image_free(pixels);
 
         scene.texture = image_create(
@@ -1651,7 +1524,7 @@ main (int argc, char** argv, char** envp) {
         };
         vkCmdCopyBufferToImage(
             cb,
-            staging.b,
+            staging.buffer,
             scene.texture.i,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
@@ -1668,8 +1541,8 @@ main (int argc, char** argv, char** envp) {
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         );
 
-        vkDestroyBuffer(vk.device, staging.b, nullptr);
-        vkFreeMemory(vk.device, staging.m, nullptr);
+        vkDestroyBuffer(vk.device, staging.buffer, nullptr);
+        vkFreeMemory(vk.device, staging.memory, nullptr);
 
         VkSamplerCreateInfo sci = {};
         sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1808,7 +1681,7 @@ main (int argc, char** argv, char** envp) {
         );
 
         VkDescriptorBufferInfo dbi = {};
-        dbi.buffer = scene.uniforms.b;
+        dbi.buffer = scene.uniforms.buffer;
         dbi.offset = 0;
         dbi.range = sizeof(scene.mvp);
 
@@ -1888,7 +1761,7 @@ main (int argc, char** argv, char** envp) {
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
             grassPipeline.handle
         );
-		VkBuffer ground_vertex_buffers[] = { groundBuffer.b };
+		VkBuffer ground_vertex_buffers[] = { groundBuffer.buffer };
 		vkCmdBindVertexBuffers(
 			vk.swap.command_buffers[i],
 			0, 1,
@@ -1904,12 +1777,12 @@ main (int argc, char** argv, char** envp) {
             vk.swap.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipeline.handle
         );
-        VkBuffer vertex_buffers[] = {scene.vertices.b};
+        VkBuffer vertex_buffers[] = {scene.vertices.buffer};
         vkCmdBindVertexBuffers(
             vk.swap.command_buffers[i], 0, 1, vertex_buffers, offsets
         );
         vkCmdBindIndexBuffer(
-            vk.swap.command_buffers[i], scene.indices.b, 0, VK_INDEX_TYPE_UINT32
+            vk.swap.command_buffers[i], scene.indices.buffer, 0, VK_INDEX_TYPE_UINT32
         );
         vkCmdDrawIndexed(
             vk.swap.command_buffers[i], static_cast<uint32_t>(indices.size()),
@@ -1971,9 +1844,9 @@ main (int argc, char** argv, char** envp) {
         /* NOTE(jan): Copy MVP. */
         void* mvp_dst;
         size_t s = sizeof(scene.mvp);
-        vkMapMemory(vk.device, scene.uniforms.m, 0, s, 0, &mvp_dst);
+        vkMapMemory(vk.device, scene.uniforms.memory, 0, s, 0, &mvp_dst);
             memcpy(mvp_dst, &scene.mvp, s);
-        vkUnmapMemory(vk.device, scene.uniforms.m);
+        vkUnmapMemory(vk.device, scene.uniforms.memory);
 
         uint32_t imageIndex;
         vkAcquireNextImageKHR(
@@ -2143,14 +2016,14 @@ main (int argc, char** argv, char** envp) {
     vkDestroyImageView(vk.device, scene.texture.v, nullptr);
     vkDestroyImage(vk.device, scene.texture.i, nullptr);
     vkFreeMemory(vk.device, scene.texture.m, nullptr);
-    vkFreeMemory(vk.device, scene.indices.m, nullptr);
-    vkDestroyBuffer(vk.device, scene.indices.b, nullptr);
-    vkFreeMemory(vk.device, scene.vertices.m, nullptr);
-    vkDestroyBuffer(vk.device, scene.vertices.b, nullptr);
-    vkFreeMemory(vk.device, groundBuffer.m, nullptr);
-    vkDestroyBuffer(vk.device, groundBuffer.b, nullptr);
-    vkFreeMemory(vk.device, scene.uniforms.m, nullptr);
-    vkDestroyBuffer(vk.device, scene.uniforms.b, nullptr);
+    vkFreeMemory(vk.device, scene.indices.memory, nullptr);
+    vkDestroyBuffer(vk.device, scene.indices.buffer, nullptr);
+    vkFreeMemory(vk.device, scene.vertices.memory, nullptr);
+    vkDestroyBuffer(vk.device, scene.vertices.buffer, nullptr);
+    vkFreeMemory(vk.device, groundBuffer.memory, nullptr);
+    vkDestroyBuffer(vk.device, groundBuffer.buffer, nullptr);
+    vkFreeMemory(vk.device, scene.uniforms.memory, nullptr);
+    vkDestroyBuffer(vk.device, scene.uniforms.buffer, nullptr);
     vkDestroyDescriptorPool(
         vk.device, pipeline.descriptorPool, nullptr
     );
