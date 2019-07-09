@@ -6,6 +6,10 @@ vk_check_success(VkResult r,
     }
 }
 
+struct Vertex {
+    glm::vec3 pos;
+};
+
 struct Queue {
     VkQueue q;
     int family_index;
@@ -182,6 +186,16 @@ public:
         vkDestroyBuffer(this->device, staging.buffer, nullptr);
         vkFreeMemory(this->device, staging.memory, nullptr);
 
+        return result;
+    }
+
+    Buffer
+    createVertexBuffer(const std::vector<Vertex>& vertices) const {
+        auto result = this->createDeviceLocalBuffer(
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            vector_size(vertices),
+            (void*)vertices.data()
+        );
         return result;
     }
 };

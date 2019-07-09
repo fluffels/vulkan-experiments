@@ -58,12 +58,7 @@ struct Settings {
 Settings settings = {};
 std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
-Vertex groundVertices[] = {
-	glm::vec3(-1.0f, 0.0f, -1.0f),
-	glm::vec3(11.0f, 0.0f, -1.0f),
-	glm::vec3(-1.0f, 0.0f, 11.0f),
-	glm::vec3(11.0f, 0.0f, 11.0f),
-};
+std::vector<Vertex> groundVertices;
 Buffer groundBuffer;
 auto eye = glm::vec3(4.84618, -1.91234, 4.54172);
 auto at = glm::vec3(5.45624, -1.52875, 5.23503);
@@ -373,6 +368,15 @@ main (int argc, char** argv, char** envp) {
             }
         }
     }
+    Vertex v0, v1, v2, v3;
+    v0.pos = glm::vec3(-1.0f, 0.0f, -1.0f);
+	v1.pos = glm::vec3(11.0f, 0.0f, -1.0f);
+	v2.pos = glm::vec3(-1.0f, 0.0f, 11.0f);
+	v3.pos = glm::vec3(11.0f, 0.0f, 11.0f);
+    groundVertices.push_back(v0);
+    groundVertices.push_back(v1);
+    groundVertices.push_back(v2);
+    groundVertices.push_back(v3);
 
     LOG(INFO) << "Initalizing GLFW...";
     if (!glfwInit()) {
@@ -1346,16 +1350,8 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Vertex buffers. */
     {
-        scene.vertices = vk.createDeviceLocalBuffer(
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            vector_size(vertices),
-            (void *) vertices.data()
-        );
-        groundBuffer = vk.createDeviceLocalBuffer(
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            sizeof(groundVertices),
-            (void *) groundVertices
-        );
+        scene.vertices = vk.createVertexBuffer(vertices);
+        groundBuffer = vk.createVertexBuffer(groundVertices);
     }
 
     /* NOTE(jan): Index buffer. */
