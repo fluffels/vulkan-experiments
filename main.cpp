@@ -1,8 +1,11 @@
+#include <array>
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <set>
 #include <unordered_map>
+#include <string>
 #include <vector>
 
 #ifndef NOMINMAX
@@ -24,6 +27,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
+#include "FS.h"
 #include "Memory.h"
 #include "NotImplementedError.h"
 #include "Buffer.h"
@@ -50,11 +54,6 @@ struct Scene {
     Image depth;
 };
 
-struct Settings {
-	VkSampleCountFlagBits sampleCount;
-};
-
-Settings settings = {};
 std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
 std::vector<Vertex> groundVertices;
@@ -63,18 +62,6 @@ auto eye = glm::vec3(4.84618, -1.91234, 4.54172);
 auto at = glm::vec3(5.45624, -1.52875, 5.23503);
 auto up = glm::vec3(0.0f, 1.0f, 0.0f);
 int keyboard[GLFW_KEY_LAST] = {GLFW_RELEASE};
-
-struct Pipeline {
-    VkShaderModule vert;
-    VkShaderModule frag;
-    VkShaderModule geom;
-    VkPipelineLayout layout;
-    VkRenderPass pass;
-    VkPipeline handle;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorPool descriptorPool;
-    VkDescriptorSet descriptorSet;
-};
 
 const std::vector<const char*> requiredDeviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -118,20 +105,6 @@ void on_key_event(GLFWwindow* window,
             keyboard[key] = GLFW_RELEASE;
         }
     }
-}
-
-static std::vector<char>
-read_file(const std::string &path) {
-    std::ifstream file(path, std::ios::ate | std::ios::binary);
-    if (!file.is_open()) {
-        LOG(ERROR) << "Could not open " << path;
-    }
-    size_t size = (size_t)file.tellg();
-    std::vector<char> buffer(size);
-    file.seekg(0);
-    file.read(buffer.data(), size);
-    file.close();
-    return buffer;
 }
 
 VkFormat
@@ -574,7 +547,7 @@ main (int argc, char** argv, char** envp) {
 					availableSampleCounts.push_back(sampleCount);
 				}
 			}
-			settings.sampleCount = availableSampleCounts.back();
+			vk.sampleCount = availableSampleCounts.back();
 
             if (!extensions_required.empty()) {
                 LOG(ERROR) << properties.deviceName << " does not support "
@@ -857,11 +830,12 @@ main (int argc, char** argv, char** envp) {
     Pipeline pipeline = {};
 	Pipeline grassPipeline = {};
 
-    /* NOTE(jan): Render passes. */
+    /* NOTE(jan): Render pass. */
+    VkRenderPass defaultRenderPass;
     {
         VkAttachmentDescription descriptions[3] = {};
         descriptions[0].format = vk.swap.format.format;
-        descriptions[0].samples = settings.sampleCount;
+        descriptions[0].samples = vk.sampleCount;
         descriptions[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         descriptions[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         descriptions[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -869,7 +843,7 @@ main (int argc, char** argv, char** envp) {
         descriptions[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         descriptions[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         descriptions[1].format = format_find_depth(vk);
-        descriptions[1].samples = settings.sampleCount;
+        descriptions[1].samples = vk.sampleCount;
         descriptions[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         descriptions[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         descriptions[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -921,13 +895,13 @@ main (int argc, char** argv, char** envp) {
         cf.pDependencies = &dep;
 
         vk_check_success(
-            vkCreateRenderPass(vk.device, &cf, nullptr, &pipeline.pass),
+            vkCreateRenderPass(vk.device, &cf, nullptr, &defaultRenderPass),
             "Could not create render pass."
         );
     }
-	grassPipeline.pass = pipeline.pass;
 
     /* NOTE(jan): Descriptor set. */
+    VkDescriptorSetLayout defaultDescriptorSetLayout;
     {
         VkDescriptorSetLayoutBinding bindings[2];
         bindings[0].binding = 0;
@@ -941,14 +915,14 @@ main (int argc, char** argv, char** envp) {
         bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         bindings[1].pImmutableSamplers = nullptr;
 
-        VkDescriptorSetLayoutCreateInfo dslci = {};
-        dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        dslci.bindingCount = 2;
-        dslci.pBindings = bindings;
+        VkDescriptorSetLayoutCreateInfo i = {};
+        i.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        i.bindingCount = 2;
+        i.pBindings = bindings;
 
         vk_check_success(
             vkCreateDescriptorSetLayout(
-                vk.device, &dslci, nullptr, &pipeline.descriptorSetLayout
+                vk.device, &i, nullptr, &defaultDescriptorSetLayout
             ),
             "Could not create descriptor set layout."
         );
@@ -957,366 +931,21 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Create pipeline. */
 	LOG(INFO) << "Creating billboard pipeline...";
     {
-        auto code = read_file("shaders/triangle/vert.spv");
-        pipeline.vert = vk.createShaderModule(code);
-        code = read_file("shaders/triangle/frag.spv");
-        pipeline.frag = vk.createShaderModule(code);
-        code = read_file("shaders/triangle/geom.spv");
-        pipeline.geom = vk.createShaderModule(code);
-
-        VkPipelineShaderStageCreateInfo vert = {};
-        vert.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vert.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vert.module = pipeline.vert;
-        vert.pName = "main";
-        /* NOTE(jan): Below would allow us to customize behaviour at
-         * compile time. */
-        // vertStageCreateInfo.pSpecializationInfo = ;
-
-        VkPipelineShaderStageCreateInfo geom = {};
-        geom.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        geom.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-        geom.module = pipeline.geom;
-        geom.pName = "main";
-
-        VkPipelineShaderStageCreateInfo frag = {};
-        frag.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        frag.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        frag.module = pipeline.frag;
-        frag.pName = "main";
-
-        std::vector<VkPipelineShaderStageCreateInfo> stages = {
-            vert,
-            geom,
-            frag
-        };
-
-        VkVertexInputBindingDescription vibd = {};
-        vibd.binding = 0;
-        vibd.stride = sizeof(Vertex);
-        vibd.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        VkVertexInputAttributeDescription viads[1] = {};
-        viads[0].binding = 0;
-        viads[0].location = 0;
-        viads[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-        viads[0].offset = offsetof(Vertex, pos);
-
-        VkPipelineVertexInputStateCreateInfo visci = {};
-        visci.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        visci.vertexBindingDescriptionCount = 1;
-        visci.pVertexBindingDescriptions = &vibd;
-        visci.vertexAttributeDescriptionCount = 1;
-        visci.pVertexAttributeDescriptions = viads;
-
-        VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
-        inputAssembly.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-        inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-        VkViewport viewport = {};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = (float)vk.swap.extent.width;
-        viewport.height = (float)vk.swap.extent.height;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-
-        VkRect2D scissor = {};
-        scissor.offset = {0, 0};
-        scissor.extent = vk.swap.extent;
-
-        VkPipelineViewportStateCreateInfo viewportState = {};
-        viewportState.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportState.viewportCount = 1;
-        viewportState.pViewports = &viewport;
-        viewportState.scissorCount = 1;
-        viewportState.pScissors = &scissor;
-
-        VkPipelineRasterizationStateCreateInfo rasterizer = {};
-        rasterizer.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        /* NOTE(jan): VK_TRUE is useful for shadow maps. */
-        rasterizer.depthClampEnable = VK_FALSE;
-        rasterizer.rasterizerDiscardEnable = VK_FALSE;
-        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterizer.lineWidth = 1.0f;
-        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        rasterizer.depthBiasEnable = VK_FALSE;
-        rasterizer.depthBiasConstantFactor = 0.0f;
-        rasterizer.depthBiasClamp = 0.0f;
-        rasterizer.depthBiasSlopeFactor = 0.0f;
-
-        VkPipelineMultisampleStateCreateInfo multisampling = {};
-        multisampling.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampling.sampleShadingEnable = VK_TRUE;
-		multisampling.rasterizationSamples = settings.sampleCount;
-        multisampling.minSampleShading = .2f;
-        multisampling.pSampleMask = nullptr;
-        multisampling.alphaToCoverageEnable = VK_FALSE;
-        multisampling.alphaToOneEnable = VK_FALSE;
-
-        VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                                              VK_COLOR_COMPONENT_G_BIT |
-                                              VK_COLOR_COMPONENT_B_BIT |
-                                              VK_COLOR_COMPONENT_A_BIT;
-		colorBlendAttachment.blendEnable = VK_TRUE;
-        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-        colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
-        VkPipelineColorBlendStateCreateInfo colorBlending = {};
-        colorBlending.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlending.logicOpEnable = VK_FALSE;
-        colorBlending.logicOp = VK_LOGIC_OP_COPY;
-        colorBlending.attachmentCount = 1;
-        colorBlending.pAttachments = &colorBlendAttachment;
-        colorBlending.blendConstants[0] = 0.0f;
-        colorBlending.blendConstants[1] = 0.0f;
-        colorBlending.blendConstants[2] = 0.0f;
-        colorBlending.blendConstants[3] = 0.0f;
-
-        VkPipelineLayoutCreateInfo layoutCreateInfo = {};
-        layoutCreateInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        layoutCreateInfo.setLayoutCount = 1;
-        layoutCreateInfo.pSetLayouts = &pipeline.descriptorSetLayout;
-        layoutCreateInfo.pushConstantRangeCount = 0;
-        layoutCreateInfo.pPushConstantRanges = nullptr;
-        vk_check_success(
-            vkCreatePipelineLayout(
-                vk.device, &layoutCreateInfo, nullptr, &pipeline.layout
-            ),
-            "Could not create pipeline layout."
+        pipeline = vk.createPipeline(
+            "shaders/triangle",
+            defaultRenderPass,
+            defaultDescriptorSetLayout
         );
-
-        VkPipelineDepthStencilStateCreateInfo dssci = {};
-        dssci.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        dssci.depthTestEnable = VK_TRUE;
-        dssci.depthWriteEnable = VK_TRUE;
-        dssci.depthCompareOp = VK_COMPARE_OP_LESS;
-        dssci.depthBoundsTestEnable = VK_FALSE;
-        dssci.front = {};
-        dssci.back = {};
-
-        VkGraphicsPipelineCreateInfo pipelineInfo = {};
-        pipelineInfo.sType =
-                VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.stageCount = stages.size();
-        pipelineInfo.pStages = stages.data();
-        pipelineInfo.pVertexInputState = &visci;
-        pipelineInfo.pInputAssemblyState = &inputAssembly;
-        pipelineInfo.pViewportState = &viewportState;
-        pipelineInfo.pRasterizationState = &rasterizer;
-        pipelineInfo.pMultisampleState = &multisampling;
-        pipelineInfo.pDepthStencilState = &dssci;
-        pipelineInfo.pColorBlendState = &colorBlending;
-        pipelineInfo.pDynamicState = nullptr;
-        pipelineInfo.layout = pipeline.layout;
-        pipelineInfo.renderPass = pipeline.pass;
-        pipelineInfo.subpass = 0;
-        /* NOTE(jan): Used to derive pipelines. */
-        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-        pipelineInfo.basePipelineIndex = -1;
-
-        vk_check_success(
-            vkCreateGraphicsPipelines(
-                vk.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
-                &pipeline.handle
-            ),
-            "Could not create graphics pipeline."
-        );
-
-        vkDestroyShaderModule(vk.device, pipeline.frag, nullptr);
-        vkDestroyShaderModule(vk.device, pipeline.geom, nullptr);
-        vkDestroyShaderModule(vk.device, pipeline.vert, nullptr);
     }
 
     /* NOTE(jan): Create pipeline. */
 	LOG(INFO) << "Creating grass pipeline...";
     {
-        auto code = read_file("shaders/ground/vert.spv");
-        grassPipeline.vert = vk.createShaderModule(code);
-        code = read_file("shaders/ground/frag.spv");
-        grassPipeline.frag = vk.createShaderModule(code);
-
-        VkPipelineShaderStageCreateInfo vert = {};
-        vert.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vert.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vert.module = grassPipeline.vert;
-        vert.pName = "main";
-
-        VkPipelineShaderStageCreateInfo frag = {};
-        frag.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        frag.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        frag.module = grassPipeline.frag;
-        frag.pName = "main";
-
-        std::vector<VkPipelineShaderStageCreateInfo> stages = {
-            vert,
-            frag
-        };
-
-        VkVertexInputBindingDescription vibd = {};
-        vibd.binding = 0;
-        vibd.stride = sizeof(Vertex);
-        vibd.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        VkVertexInputAttributeDescription viads[1] = {};
-        viads[0].binding = 0;
-        viads[0].location = 0;
-        viads[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-        viads[0].offset = offsetof(Vertex, pos);
-
-        VkPipelineVertexInputStateCreateInfo visci = {};
-        visci.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        visci.vertexBindingDescriptionCount = 1;
-        visci.pVertexBindingDescriptions = &vibd;
-        visci.vertexAttributeDescriptionCount = 1;
-        visci.pVertexAttributeDescriptions = viads;
-
-        VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
-        inputAssembly.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-        inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-        VkViewport viewport = {};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = (float)vk.swap.extent.width;
-        viewport.height = (float)vk.swap.extent.height;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-
-        VkRect2D scissor = {};
-        scissor.offset = {0, 0};
-        scissor.extent = vk.swap.extent;
-
-        VkPipelineViewportStateCreateInfo viewportState = {};
-        viewportState.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportState.viewportCount = 1;
-        viewportState.pViewports = &viewport;
-        viewportState.scissorCount = 1;
-        viewportState.pScissors = &scissor;
-
-        VkPipelineRasterizationStateCreateInfo rasterizer = {};
-        rasterizer.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        /* NOTE(jan): VK_TRUE is useful for shadow maps. */
-        rasterizer.depthClampEnable = VK_FALSE;
-        rasterizer.rasterizerDiscardEnable = VK_FALSE;
-        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterizer.lineWidth = 1.0f;
-        rasterizer.cullMode = VK_CULL_MODE_NONE;
-        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        rasterizer.depthBiasEnable = VK_FALSE;
-        rasterizer.depthBiasConstantFactor = 0.0f;
-        rasterizer.depthBiasClamp = 0.0f;
-        rasterizer.depthBiasSlopeFactor = 0.0f;
-
-        VkPipelineMultisampleStateCreateInfo multisampling = {};
-        multisampling.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampling.sampleShadingEnable = VK_TRUE;
-		multisampling.rasterizationSamples = settings.sampleCount;
-        multisampling.minSampleShading = .2f;
-        multisampling.pSampleMask = nullptr;
-        multisampling.alphaToCoverageEnable = VK_FALSE;
-        multisampling.alphaToOneEnable = VK_FALSE;
-
-        VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                                              VK_COLOR_COMPONENT_G_BIT |
-                                              VK_COLOR_COMPONENT_B_BIT |
-                                              VK_COLOR_COMPONENT_A_BIT;
-		colorBlendAttachment.blendEnable = VK_TRUE;
-        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-        colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
-        VkPipelineColorBlendStateCreateInfo colorBlending = {};
-        colorBlending.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlending.logicOpEnable = VK_FALSE;
-        colorBlending.logicOp = VK_LOGIC_OP_COPY;
-        colorBlending.attachmentCount = 1;
-        colorBlending.pAttachments = &colorBlendAttachment;
-        colorBlending.blendConstants[0] = 0.0f;
-        colorBlending.blendConstants[1] = 0.0f;
-        colorBlending.blendConstants[2] = 0.0f;
-        colorBlending.blendConstants[3] = 0.0f;
-
-        VkPipelineLayoutCreateInfo layoutCreateInfo = {};
-        layoutCreateInfo.sType =
-                VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        layoutCreateInfo.setLayoutCount = 1;
-        layoutCreateInfo.pSetLayouts = &pipeline.descriptorSetLayout;
-        layoutCreateInfo.pushConstantRangeCount = 0;
-        layoutCreateInfo.pPushConstantRanges = nullptr;
-        vk_check_success(
-            vkCreatePipelineLayout(
-                vk.device, &layoutCreateInfo, nullptr, &grassPipeline.layout
-            ),
-            "Could not create grassPipeline layout."
+        grassPipeline = vk.createPipeline(
+            "shaders/ground",
+            defaultRenderPass,
+            defaultDescriptorSetLayout
         );
-
-        VkPipelineDepthStencilStateCreateInfo dssci = {};
-        dssci.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        dssci.depthTestEnable = VK_TRUE;
-        dssci.depthWriteEnable = VK_TRUE;
-        dssci.depthCompareOp = VK_COMPARE_OP_LESS;
-        dssci.depthBoundsTestEnable = VK_FALSE;
-        dssci.front = {};
-        dssci.back = {};
-
-        VkGraphicsPipelineCreateInfo pipelineInfo = {};
-        pipelineInfo.sType =
-                VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.stageCount = stages.size();
-        pipelineInfo.pStages = stages.data();
-        pipelineInfo.pVertexInputState = &visci;
-        pipelineInfo.pInputAssemblyState = &inputAssembly;
-        pipelineInfo.pViewportState = &viewportState;
-        pipelineInfo.pRasterizationState = &rasterizer;
-        pipelineInfo.pMultisampleState = &multisampling;
-        pipelineInfo.pDepthStencilState = &dssci;
-        pipelineInfo.pColorBlendState = &colorBlending;
-        pipelineInfo.pDynamicState = nullptr;
-        pipelineInfo.layout = grassPipeline.layout;
-        pipelineInfo.renderPass = grassPipeline.pass;
-        pipelineInfo.subpass = 0;
-        /* NOTE(jan): Used to derive pipelines. */
-        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-        pipelineInfo.basePipelineIndex = -1;
-
-        vk_check_success(
-            vkCreateGraphicsPipelines(
-                vk.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
-                &grassPipeline.handle
-            ),
-            "Could not create graphics pipeline."
-        );
-
-        vkDestroyShaderModule(vk.device, grassPipeline.frag, nullptr);
-        vkDestroyShaderModule(vk.device, grassPipeline.vert, nullptr);
     }
 
     /* NOTE(jan): Command pool creation. */
@@ -1470,7 +1099,7 @@ main (int argc, char** argv, char** envp) {
 		scene.colour = image_create(
 			vk,
 			{ vk.swap.extent.width, vk.swap.extent.height, 1 },
-			settings.sampleCount,
+			vk.sampleCount,
 			vk.swap.format.format,
 			vk.swap.format.format,
 			VK_IMAGE_TILING_OPTIMAL,
@@ -1495,7 +1124,7 @@ main (int argc, char** argv, char** envp) {
         scene.depth = image_create(
             vk,
             {vk.swap.extent.width, vk.swap.extent.height, 1},
-			settings.sampleCount,
+			vk.sampleCount,
             format,
             format,
             VK_IMAGE_TILING_OPTIMAL,
@@ -1524,7 +1153,7 @@ main (int argc, char** argv, char** envp) {
             };
             VkFramebufferCreateInfo cf = {};
             cf.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            cf.renderPass = pipeline.pass;
+            cf.renderPass = defaultRenderPass;
             cf.attachmentCount = 3;
             cf.pAttachments = attachments;
             cf.width = vk.swap.extent.width;
@@ -1540,6 +1169,7 @@ main (int argc, char** argv, char** envp) {
     }
 
     /* NOTE(jan): Descriptor pool. */
+    VkDescriptorPool defaultDescriptorPool;
     {
         VkDescriptorPoolSize dps[2] = {};
         dps[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1555,24 +1185,25 @@ main (int argc, char** argv, char** envp) {
 
         vk_check_success(
             vkCreateDescriptorPool(
-                vk.device, &dpci, nullptr, &pipeline.descriptorPool
+                vk.device, &dpci, nullptr, &defaultDescriptorPool
             ),
             "Could not create descriptor pool."
         );
     }
 
     /* NOTE(jan): Descriptor set. */
+    VkDescriptorSet defaultDescriptorSet;
     {
-        VkDescriptorSetLayout layouts[] = {pipeline.descriptorSetLayout};
+        VkDescriptorSetLayout layouts[] = {defaultDescriptorSetLayout};
         VkDescriptorSetAllocateInfo dsai = {};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = pipeline.descriptorPool;
+        dsai.descriptorPool = defaultDescriptorPool;
         dsai.descriptorSetCount = 1;
         dsai.pSetLayouts = layouts;
 
         vk_check_success(
             vkAllocateDescriptorSets(
-                vk.device, &dsai, &pipeline.descriptorSet
+                vk.device, &dsai, &defaultDescriptorSet
             ),
             "Could not allocate descriptor set."
         );
@@ -1589,14 +1220,14 @@ main (int argc, char** argv, char** envp) {
 
         VkWriteDescriptorSet wds[2] = {};
         wds[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        wds[0].dstSet = pipeline.descriptorSet;
+        wds[0].dstSet = defaultDescriptorSet;
         wds[0].dstBinding = 0;
         wds[0].dstArrayElement = 0;
         wds[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         wds[0].descriptorCount = 1;
         wds[0].pBufferInfo = &dbi;
         wds[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        wds[1].dstSet = pipeline.descriptorSet;
+        wds[1].dstSet = defaultDescriptorSet;
         wds[1].dstBinding = 1;
         wds[1].dstArrayElement = 0;
         wds[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1631,7 +1262,7 @@ main (int argc, char** argv, char** envp) {
         /* NOTE(jan): Set up render pass. */
         VkRenderPassBeginInfo rpbi = {};
         rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rpbi.renderPass = pipeline.pass;
+        rpbi.renderPass = defaultRenderPass;
         rpbi.framebuffer = vk.swap.frames[i];
         rpbi.renderArea.offset = {0, 0};
         rpbi.renderArea.extent = vk.swap.extent;
@@ -1649,7 +1280,7 @@ main (int argc, char** argv, char** envp) {
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipeline.layout,
             0, 1,
-            &pipeline.descriptorSet,
+            &defaultDescriptorSet,
             0, nullptr
         );
         VkDeviceSize offsets[] = {0};
@@ -1922,10 +1553,7 @@ main (int argc, char** argv, char** envp) {
     vkFreeMemory(vk.device, scene.uniforms.memory, nullptr);
     vkDestroyBuffer(vk.device, scene.uniforms.buffer, nullptr);
     vkDestroyDescriptorPool(
-        vk.device, pipeline.descriptorPool, nullptr
-    );
-    vkDestroyDescriptorPool(
-        vk.device, grassPipeline.descriptorPool, nullptr
+        vk.device, defaultDescriptorPool, nullptr
     );
     vkDestroyCommandPool(vk.device, vk.commandPool, nullptr);
     for (const auto& f: vk.swap.frames) {
@@ -1934,14 +1562,11 @@ main (int argc, char** argv, char** envp) {
     vkDestroyPipeline(vk.device, pipeline.handle, nullptr);
     vkDestroyPipelineLayout(vk.device, pipeline.layout, nullptr);
     vkDestroyDescriptorSetLayout(
-        vk.device, pipeline.descriptorSetLayout, nullptr
+        vk.device, defaultDescriptorSetLayout, nullptr
     );
-    vkDestroyRenderPass(vk.device, pipeline.pass, nullptr);
+    vkDestroyRenderPass(vk.device, defaultRenderPass, nullptr);
     vkDestroyPipeline(vk.device, grassPipeline.handle, nullptr);
     vkDestroyPipelineLayout(vk.device, grassPipeline.layout, nullptr);
-    vkDestroyDescriptorSetLayout(
-        vk.device, grassPipeline.descriptorSetLayout, nullptr
-    );
     for (const auto& i: vk.swap.images) {
         vkDestroyImageView(vk.device, i.v, nullptr);
     }
