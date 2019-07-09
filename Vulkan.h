@@ -250,9 +250,7 @@ public:
     Image
     createImage(VkExtent3D extent,
                  VkSampleCountFlagBits sampleCount,
-                 VkFormat imageFormat,
-                 VkFormat viewFormat,
-                 VkImageTiling tiling,
+                 VkFormat format,
                  VkImageUsageFlags usage,
                  VkMemoryPropertyFlags memoryProperties,
                  VkImageAspectFlags aspects) {
@@ -265,8 +263,8 @@ public:
             i.samples = sampleCount;
             i.mipLevels = 1;
             i.arrayLayers = 1;
-            i.format = imageFormat;
-            i.tiling = tiling;
+            i.format = format;
+            i.tiling = VK_IMAGE_TILING_OPTIMAL;
             i.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             i.usage = usage;
             i.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -287,7 +285,7 @@ public:
             i.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             i.image = result.i;
             i.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            i.format = viewFormat;
+            i.format = format;
             i.subresourceRange.layerCount = 1;
             i.subresourceRange.baseArrayLayer = 0;
             i.subresourceRange.aspectMask = aspects;
