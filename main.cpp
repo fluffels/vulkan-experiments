@@ -261,47 +261,6 @@ image_create(VK& vk,
     return image;
 }
 
-VkCommandBuffer
-command_one_off_start(const VK& vk,
-                      const VkCommandPool& cp) {
-    /* TODO(jan): Create a separate command pool for short lived buffers and
-     * set VK_COMMAND_POOL_CREATE_TRANSIENT_BIT so the implementation can
-     * optimize this. */
-    VkCommandBufferAllocateInfo cbai = {};
-    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cbai.commandPool = cp;
-    cbai.commandBufferCount = 1;
-
-    VkCommandBuffer cb;
-    vkAllocateCommandBuffers(vk.device, &cbai, &cb);
-
-    VkCommandBufferBeginInfo cbbi = {};
-    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    vkBeginCommandBuffer(cb, &cbbi);
-
-    return cb;
-}
-
-void
-command_one_off_stop_and_submit(const VK& vk,
-                                const VkCommandPool& cp,
-                                const VkCommandBuffer& cb) {
-    vkEndCommandBuffer(cb);
-
-    VkSubmitInfo si = {};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &cb;
-
-    vkQueueSubmit(vk.queues.graphics.q, 1, &si, VK_NULL_HANDLE);
-    vkQueueWaitIdle(vk.queues.graphics.q);
-
-    vkFreeCommandBuffers(vk.device, cp, 1, &cb);
-}
-
 void
 image_transition(const VK& vk,
                  const VkCommandPool cp,
@@ -366,7 +325,7 @@ image_transition(const VK& vk,
         throw std::invalid_argument("Unsupported layout transition.");
     }
 
-    auto cb = command_one_off_start(vk, cp);
+    auto cb = vk.startCommand();
     vkCmdPipelineBarrier(
         cb,
         stage_src, stage_dst,
@@ -375,43 +334,7 @@ image_transition(const VK& vk,
         0, nullptr,
         1, &barrier
     );
-    command_one_off_stop_and_submit(vk, cp, cb);
-}
-
-Buffer
-buffer_create_and_initialize(const VK& vk,
-                             const VkCommandPool& cp,
-                             VkBufferUsageFlags usage,
-                             VkDeviceSize size,
-                             void *contents) {
-    auto staging = vk.createBuffer(
-       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-       size
-    );
-
-    void* data;
-    vkMapMemory(vk.device, staging.memory, 0, size, 0, &data);
-    memcpy(data, contents, (size_t)size);
-    vkUnmapMemory(vk.device, staging.memory);
-
-    auto buffer = vk.createBuffer(
-        usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        size
-    );
-
-    auto cb = command_one_off_start(vk, cp);
-    VkBufferCopy bc = {};
-    bc.size = size;
-    vkCmdCopyBuffer(cb, staging.buffer, buffer.buffer, 1, &bc);
-    command_one_off_stop_and_submit(vk, cp, cb);
-
-    vkDestroyBuffer(vk.device, staging.buffer, nullptr);
-    vkFreeMemory(vk.device, staging.memory, nullptr);
-
-    return buffer;
+    vk.submitCommand(cb);
 }
 
 int
@@ -1410,38 +1333,36 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Command pool creation. */
 	LOG(INFO) << "Create command pools...";
-    VkCommandPool command_pool;
     {
         VkCommandPoolCreateInfo cf = {};
         cf.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cf.queueFamilyIndex = vk.queues.graphics.family_index;
         cf.flags = 0;
         vk_check_success(
-            vkCreateCommandPool(vk.device, &cf, nullptr, &command_pool),
+            vkCreateCommandPool(vk.device, &cf, nullptr, &vk.commandPool),
             "Could not create command pool."
         );
     }
 
     /* NOTE(jan): Vertex buffers. */
     {
-        VkDeviceSize size = vector_size(vertices);
-        scene.vertices = buffer_create_and_initialize(
-            vk, command_pool, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size,
+        scene.vertices = vk.createDeviceLocalBuffer(
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            vector_size(vertices),
             (void *) vertices.data()
         );
-
-        size = sizeof(groundVertices);
-        groundBuffer = buffer_create_and_initialize(
-            vk, command_pool, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size,
+        groundBuffer = vk.createDeviceLocalBuffer(
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            sizeof(groundVertices),
             (void *) groundVertices
         );
     }
 
     /* NOTE(jan): Index buffer. */
     {
-        VkDeviceSize size = vector_size(indices);
-        scene.indices = buffer_create_and_initialize(
-            vk, command_pool, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size,
+        scene.indices = vk.createDeviceLocalBuffer(
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            vector_size(indices),
             (void *) indices.data()
         );
     }
@@ -1500,14 +1421,14 @@ main (int argc, char** argv, char** envp) {
 
         image_transition(
             vk,
-            command_pool,
+            vk.commandPool,
             scene.texture,
             VK_FORMAT_R8G8B8A8_UNORM,
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
         );
 
-        auto cb = command_one_off_start(vk, command_pool);
+        auto cb = vk.startCommand();
         VkBufferImageCopy bic = {};
         bic.bufferOffset = 0;
         bic.bufferRowLength = 0;
@@ -1530,11 +1451,11 @@ main (int argc, char** argv, char** envp) {
             1,
             &bic
         );
-        command_one_off_stop_and_submit(vk, command_pool, cb);
+        vk.submitCommand(cb);
 
         image_transition(
             vk,
-            command_pool,
+            vk.commandPool,
             scene.texture,
             VK_FORMAT_R8G8B8A8_UNORM,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -1583,7 +1504,7 @@ main (int argc, char** argv, char** envp) {
 		);
 		image_transition(
 			vk,
-			command_pool,
+			vk.commandPool,
 			scene.colour,
 			vk.swap.format.format,
 			VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1608,7 +1529,7 @@ main (int argc, char** argv, char** envp) {
         );
         image_transition(
             vk,
-            command_pool,
+            vk.commandPool,
             scene.depth,
             format,
             VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1714,7 +1635,7 @@ main (int argc, char** argv, char** envp) {
         vk.swap.command_buffers.resize(vk.swap.l);
         VkCommandBufferAllocateInfo i = {};
         i.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        i.commandPool = command_pool;
+        i.commandPool = vk.commandPool;
         i.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         i.commandBufferCount = (uint32_t)vk.swap.command_buffers.size();
         vk_check_success(
@@ -2030,7 +1951,7 @@ main (int argc, char** argv, char** envp) {
     vkDestroyDescriptorPool(
         vk.device, grassPipeline.descriptorPool, nullptr
     );
-    vkDestroyCommandPool(vk.device, command_pool, nullptr);
+    vkDestroyCommandPool(vk.device, vk.commandPool, nullptr);
     for (const auto& f: vk.swap.frames) {
         vkDestroyFramebuffer(vk.device, f, nullptr);
     }

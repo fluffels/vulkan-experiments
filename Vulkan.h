@@ -50,6 +50,7 @@ public:
     VkInstance h;
     VkPhysicalDevice physical_device;
     VkSurfaceKHR surface;
+    VkCommandPool commandPool;
     Queues queues;
     SwapChain swap;
 
@@ -109,4 +110,79 @@ public:
 		vkBindBufferMemory(this->device, result.buffer, result.memory, 0);
 		return result;
 	}
+
+    VkCommandBuffer
+    startCommand() const {
+        /* TODO(jan): Create a separate command pool for short lived buffers and
+         * set VK_COMMAND_POOL_CREATE_TRANSIENT_BIT so the implementation can
+         * optimize this. */
+        VkCommandBuffer result;
+        {
+            VkCommandBufferAllocateInfo i = {};
+            i.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            i.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            i.commandPool = this->commandPool;
+            i.commandBufferCount = 1;
+            vkAllocateCommandBuffers(this->device, &i, &result);
+        }
+        {
+            VkCommandBufferBeginInfo i = {};
+            i.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            i.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+            vkBeginCommandBuffer(result, &i);
+        }
+        return result;
+    }
+
+    void
+    submitCommand(const VkCommandBuffer& commandBuffer) const {
+        vkEndCommandBuffer(commandBuffer);
+        {
+            VkSubmitInfo i = {};
+            i.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            i.commandBufferCount = 1;
+            i.pCommandBuffers = &commandBuffer;
+            vkQueueSubmit(this->queues.graphics.q, 1, &i, VK_NULL_HANDLE);
+        }
+        vkQueueWaitIdle(this->queues.graphics.q);
+        vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);
+    }
+
+	Buffer
+    createDeviceLocalBuffer(
+        VkBufferUsageFlags usage,
+        VkDeviceSize size,
+        void* contents
+    ) const {
+        auto staging = this->createBuffer(
+           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+           size
+        );
+
+        void* data;
+        vkMapMemory(this->device, staging.memory, 0, size, 0, &data);
+        memcpy(data, contents, (size_t)size);
+        vkUnmapMemory(this->device, staging.memory);
+
+        auto result = this->createBuffer(
+            usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            size
+        );
+
+        VkBufferCopy bufferCopy = {};
+        bufferCopy.size = size;
+        auto commandBuffer = this->startCommand();
+        vkCmdCopyBuffer(commandBuffer, staging.buffer,
+                        result.buffer, 1, &bufferCopy);
+        this->submitCommand(commandBuffer);
+
+        vkDestroyBuffer(this->device, staging.buffer, nullptr);
+        vkFreeMemory(this->device, staging.memory, nullptr);
+
+        return result;
+    }
 };
+
