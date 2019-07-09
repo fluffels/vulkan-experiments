@@ -198,5 +198,15 @@ public:
         );
         return result;
     }
+
+    Buffer
+    createIndexBuffer(const std::vector<uint32_t>& indices) const {
+        auto result = this->createDeviceLocalBuffer(
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            vector_size(indices),
+            (void*)indices.data()
+        );
+        return result;
+    }
 };
 

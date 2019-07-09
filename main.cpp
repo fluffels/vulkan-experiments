@@ -28,7 +28,6 @@
 #include "NotImplementedError.h"
 #include "Buffer.h"
 #include "Vulkan.h"
-#include "VertexBuffer.h"
 
 struct Coord {
     double x;
@@ -1356,11 +1355,7 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Index buffer. */
     {
-        scene.indices = vk.createDeviceLocalBuffer(
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            vector_size(indices),
-            (void *) indices.data()
-        );
+        scene.indices = vk.createIndexBuffer(indices);
     }
 
     /* NOTE(jan): Uniform buffer. */
