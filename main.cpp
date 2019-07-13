@@ -59,8 +59,8 @@ std::vector<Vertex> vertices;
 std::vector<uint32_t> indices;
 std::vector<Vertex> groundVertices;
 Buffer groundBuffer;
-auto eye = glm::vec3(4.84618, -1.91234, 4.54172);
-auto at = glm::vec3(5.45624, -1.52875, 5.23503);
+auto eye = glm::vec3(50.0f, -1.0f, 50.0f);
+auto at = glm::vec3(0.0f, -1.0f, 0.0f);
 auto up = glm::vec3(0.0f, 1.0f, 0.0f);
 int keyboard[GLFW_KEY_LAST] = {GLFW_RELEASE};
 
@@ -162,8 +162,8 @@ main (int argc, char** argv, char** envp) {
     }
 
     LOG(INFO) << "Generating model...";
-	const int extent = 10;
-	const int density = 1;
+	const int extent = 1000;
+	const int density = 2;
 	const int count = extent * density;
     {
         for (int z = 0; z < count; z++) {
@@ -180,10 +180,11 @@ main (int argc, char** argv, char** envp) {
         }
     }
     Vertex v0, v1, v2, v3;
+    const float maxCoord = (float)(extent + 1);
     v0.pos = glm::vec3(-1.0f, 0.0f, -1.0f);
-	v1.pos = glm::vec3(11.0f, 0.0f, -1.0f);
-	v2.pos = glm::vec3(-1.0f, 0.0f, 11.0f);
-	v3.pos = glm::vec3(11.0f, 0.0f, 11.0f);
+	v1.pos = glm::vec3(maxCoord, 0.0f, -1.0f);
+	v2.pos = glm::vec3(-1.0f, 0.0f, maxCoord);
+	v3.pos = glm::vec3(maxCoord, 0.0f, maxCoord);
     groundVertices.push_back(v0);
     groundVertices.push_back(v1);
     groundVertices.push_back(v2);
@@ -1213,7 +1214,9 @@ main (int argc, char** argv, char** envp) {
         /* NOTE(jan): Movement. */
         auto delta = 2.f;
         if (keyboard[GLFW_KEY_W] == GLFW_PRESS) {
-            glm::vec3 forward = glm::normalize(at - eye);
+            glm::vec3 forward = at - eye;
+            forward.y = 0.0f;
+            forward = glm::normalize(forward);
             eye += forward * delta * delta_f;
             at += forward * delta * delta_f;
         }
