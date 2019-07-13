@@ -53,6 +53,7 @@ struct Scene {
     Image groundTexture;
 	Image colour;
     Image depth;
+    Image noise;
 };
 
 std::vector<Vertex> vertices;
@@ -162,7 +163,7 @@ main (int argc, char** argv, char** envp) {
     }
 
     LOG(INFO) << "Generating model...";
-	const int extent = 1000;
+	const int extent = 100;
 	const int density = 2;
 	const int count = extent * density;
     {
@@ -767,7 +768,7 @@ main (int argc, char** argv, char** envp) {
             b.pImmutableSamplers = nullptr;
             bindings.push_back(b);
         }
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 3; i++) {
             VkDescriptorSetLayoutBinding b = {};
             b.binding = 1 + i;
             b.descriptorCount = 1;
@@ -834,6 +835,7 @@ main (int argc, char** argv, char** envp) {
 
     scene.texture = vk.createTexture("grass_square.png");
     scene.groundTexture = vk.createTexture("ground.jpg", true);
+    scene.noise = vk.createTexture("noise.png");
 
 	/* NOTE(jan): Colour buffer. */
 	{
@@ -908,7 +910,7 @@ main (int argc, char** argv, char** envp) {
             s.descriptorCount = 1;
             size.push_back(s);
         }
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 3; i++) {
             VkDescriptorPoolSize s = {};
             s.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             s.descriptorCount = 1;
@@ -966,6 +968,21 @@ main (int argc, char** argv, char** envp) {
             w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             w.dstSet = defaultDescriptorSet;
             w.dstBinding = 2;
+            w.dstArrayElement = 0;
+            w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            w.descriptorCount = 1;
+            w.pImageInfo = &i;
+            writes.push_back(w);
+        }
+        {
+            VkDescriptorImageInfo i = {};
+            i.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            i.imageView = scene.noise.v;
+            i.sampler = scene.noise.s;
+            VkWriteDescriptorSet w = {};
+            w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w.dstSet = defaultDescriptorSet;
+            w.dstBinding = 3;
             w.dstArrayElement = 0;
             w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             w.descriptorCount = 1;
@@ -1288,8 +1305,12 @@ main (int argc, char** argv, char** envp) {
     vkDestroySampler(vk.device, scene.groundTexture.s, nullptr);
     vkDestroyImageView(vk.device, scene.groundTexture.v, nullptr);
     vkDestroyImage(vk.device, scene.groundTexture.i, nullptr);
+    vkDestroySampler(vk.device, scene.noise.s, nullptr);
+    vkDestroyImageView(vk.device, scene.noise.v, nullptr);
+    vkDestroyImage(vk.device, scene.noise.i, nullptr);
     vkFreeMemory(vk.device, scene.texture.m, nullptr);
     vkFreeMemory(vk.device, scene.groundTexture.m, nullptr);
+    vkFreeMemory(vk.device, scene.noise.m, nullptr);
     vkFreeMemory(vk.device, scene.indices.memory, nullptr);
     vkDestroyBuffer(vk.device, scene.indices.buffer, nullptr);
     vkFreeMemory(vk.device, scene.vertices.memory, nullptr);
