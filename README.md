@@ -7,3 +7,6 @@ Experimenting with the Vulkan graphics API.
 1. `source /path/to/VulkanSDK/1.0.65.0/setup-env.sh`
 1. `cmake .`
 1. `make`
+
+# Credits
+1. Ground texture from (here)[https://opengameart.org/content/grass-001].
