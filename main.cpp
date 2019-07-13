@@ -901,18 +901,10 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Descriptor set. */
     VkDescriptorSet defaultDescriptorSet;
     {
-        VkDescriptorSetLayout layouts[] = {defaultDescriptorSetLayout};
-        VkDescriptorSetAllocateInfo dsai = {};
-        dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        dsai.descriptorPool = defaultDescriptorPool;
-        dsai.descriptorSetCount = 1;
-        dsai.pSetLayouts = layouts;
-
-        vk_check_success(
-            vkAllocateDescriptorSets(
-                vk.device, &dsai, &defaultDescriptorSet
-            ),
-            "Could not allocate descriptor set."
+        std::vector<VkDescriptorSetLayout> layouts;
+        layouts.push_back(defaultDescriptorSetLayout);
+        defaultDescriptorSet = vk.allocateDescriptorSet(
+            defaultDescriptorPool, layouts
         );
 
         VkDescriptorBufferInfo dbi = {};

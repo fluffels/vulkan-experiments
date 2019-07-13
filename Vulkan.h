@@ -321,9 +321,7 @@ public:
         VkResult code = vkCreateDescriptorSetLayout(
             this->device, &i, nullptr, &result
         );
-        if (code != VK_SUCCESS) {
-            throw std::runtime_error("Could not create descriptor set layout.");
-        }
+        if (code != VK_SUCCESS) throw std::runtime_error("Could not create descriptor set layout.");
         return result;
     }
 
@@ -336,9 +334,21 @@ public:
         i.maxSets = 1;
         VkDescriptorPool result;
         VkResult code = vkCreateDescriptorPool(this->device, &i, nullptr, &result);
-        if (code != VK_SUCCESS) {
-            throw std::runtime_error("Could not create descriptor pool.");
-        }
+        if (code != VK_SUCCESS) throw std::runtime_error("Could not create descriptor pool.");
+        return result;
+    }
+
+    VkDescriptorSet
+    allocateDescriptorSet(const VkDescriptorPool& pool,
+                          const std::vector<VkDescriptorSetLayout>& layouts) {
+        VkDescriptorSetAllocateInfo i = {};
+        i.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        i.descriptorPool = pool;
+        i.descriptorSetCount = layouts.size();
+        i.pSetLayouts = layouts.data();
+        VkDescriptorSet result;
+        VkResult code = vkAllocateDescriptorSets(this->device, &i, &result);
+        if (code != VK_SUCCESS) throw std::runtime_error("Could not allocate descriptor set.");
         return result;
     }
 
