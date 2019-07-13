@@ -753,7 +753,6 @@ main (int argc, char** argv, char** envp) {
         );
     }
 
-    /* NOTE(jan): Descriptor set. */
     VkDescriptorSetLayout defaultDescriptorSetLayout;
     {
         std::vector<VkDescriptorSetLayoutBinding> bindings(2);
@@ -770,7 +769,6 @@ main (int argc, char** argv, char** envp) {
         defaultDescriptorSetLayout = vk.createDescriptorSetLayout(bindings);
     }
 
-    /* NOTE(jan): Create pipeline. */
 	LOG(INFO) << "Creating billboard pipeline...";
     {
         pipeline = vk.createPipeline(
@@ -780,7 +778,6 @@ main (int argc, char** argv, char** envp) {
         );
     }
 
-    /* NOTE(jan): Create pipeline. */
 	LOG(INFO) << "Creating grass pipeline...";
     {
         grassPipeline = vk.createPipeline(
@@ -825,10 +822,7 @@ main (int argc, char** argv, char** envp) {
         );
     }
 
-    /* NOTE(jan): Texture buffer. */
-    {
-        scene.texture = vk.createTexture("grass_square.png");
-    }
+    scene.texture = vk.createTexture("grass_square.png");
 
 	/* NOTE(jan): Colour buffer. */
 	{
@@ -847,7 +841,6 @@ main (int argc, char** argv, char** envp) {
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 		);
 	}
-
 
     /* NOTE(jan): Depth buffer. */
     {
