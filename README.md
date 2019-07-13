@@ -9,4 +9,4 @@ Experimenting with the Vulkan graphics API.
 1. `make`
 
 # Credits
-1. Ground texture from (here)[https://opengameart.org/content/grass-001].
+1. Ground texture from [here](https://opengameart.org/content/grass-001).
