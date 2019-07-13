@@ -908,24 +908,12 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Descriptor pool. */
     VkDescriptorPool defaultDescriptorPool;
     {
-        VkDescriptorPoolSize dps[2] = {};
-        dps[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        dps[0].descriptorCount = 1;
-        dps[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        dps[1].descriptorCount = 1;
-
-        VkDescriptorPoolCreateInfo dpci = {};
-        dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        dpci.poolSizeCount = 2;
-        dpci.pPoolSizes = dps;
-        dpci.maxSets = 1;
-
-        vk_check_success(
-            vkCreateDescriptorPool(
-                vk.device, &dpci, nullptr, &defaultDescriptorPool
-            ),
-            "Could not create descriptor pool."
-        );
+        std::vector<VkDescriptorPoolSize> size(2);
+        size[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        size[0].descriptorCount = 1;
+        size[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        size[1].descriptorCount = 1;
+        defaultDescriptorPool = vk.createDescriptorPool(size);
     }
 
     /* NOTE(jan): Descriptor set. */

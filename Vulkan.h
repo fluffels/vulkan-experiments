@@ -309,6 +309,21 @@ public:
         return result;
     }
 
+    VkDescriptorPool
+    createDescriptorPool(const std::vector<VkDescriptorPoolSize>& size) {
+        VkDescriptorPoolCreateInfo i = {};
+        i.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        i.poolSizeCount = size.size();
+        i.pPoolSizes = size.data();
+        i.maxSets = 1;
+        VkDescriptorPool result;
+        VkResult code = vkCreateDescriptorPool(this->device, &i, nullptr, &result);
+        if (code != VK_SUCCESS) {
+            throw std::runtime_error("Could not create descriptor pool.");
+        }
+        return result;
+    }
+
     Buffer
     createVertexBuffer(const std::vector<Vertex>& vertices) const {
         auto result = this->createDeviceLocalBuffer(
