@@ -383,6 +383,109 @@ public:
         return result;
     }
 
+    Image
+    createTexture(std::filesystem::path imageSource) {
+        int width;
+        int height;
+        int depth;
+        stbi_uc* pixels = stbi_load(
+            "grass_square.png", &width, &height, &depth, STBI_rgb_alpha
+        );
+        if (!pixels) {
+            throw std::runtime_error("Could not load texture.");
+        }
+        auto length = width * height * 4;
+        auto staging = this->createBuffer(
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            length
+        );
+        void* data;
+        auto size = (VkDeviceSize)length;
+        vkMapMemory(this->device, staging.memory, 0, size, 0, &data);
+            memcpy(data, pixels, length);
+        vkUnmapMemory(this->device, staging.memory);
+        stbi_image_free(pixels);
+
+        Image result = this->createImage(
+            {
+                static_cast<uint32_t>(width),
+                static_cast<uint32_t>(height),
+                1
+            },
+			VK_SAMPLE_COUNT_1_BIT,
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            VK_IMAGE_ASPECT_COLOR_BIT
+        );
+        this->transitionImage(
+            result,
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+        );
+        {
+            auto commandBuffer = this->startCommand();
+            VkBufferImageCopy i = {};
+            i.bufferOffset = 0;
+            i.bufferRowLength = 0;
+            i.bufferImageHeight = 0;
+            i.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            i.imageSubresource.mipLevel = 0;
+            i.imageSubresource.baseArrayLayer = 0;
+            i.imageSubresource.layerCount = 1;
+            i.imageOffset = {0, 0};
+            i.imageExtent = {
+                static_cast<uint32_t>(width),
+                static_cast<uint32_t>(height),
+                1
+            };
+            vkCmdCopyBufferToImage(
+                commandBuffer,
+                staging.buffer,
+                result.i,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                1,
+                &i
+            );
+            this->submitCommand(commandBuffer);
+        }
+        this->transitionImage(
+            result,
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        );
+        vkDestroyBuffer(this->device, staging.buffer, nullptr);
+        vkFreeMemory(this->device, staging.memory, nullptr);
+        {
+            VkSamplerCreateInfo i = {};
+            i.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+            i.magFilter = VK_FILTER_LINEAR;
+            i.minFilter = VK_FILTER_LINEAR;
+            i.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            i.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            i.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            i.anisotropyEnable = VK_TRUE;
+            i.maxAnisotropy = 16;
+            i.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+            i.unnormalizedCoordinates = VK_FALSE;
+            i.compareEnable = VK_FALSE;
+            i.compareOp = VK_COMPARE_OP_ALWAYS;
+            i.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            i.mipLodBias = 0.0f;
+            i.minLod = 0.0f;
+            i.maxLod = 0.0f;
+            vk_check_success(
+                vkCreateSampler(this->device, &i, nullptr, &result.s),
+                "Could not create image sampler."
+            );
+        }
+        return result;
+    }
+
     VkShaderModule
     createShaderModule(const std::filesystem::path& path) {
         auto code = readFile(path);
