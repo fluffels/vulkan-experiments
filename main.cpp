@@ -56,7 +56,7 @@ struct Scene {
     Image noise;
 };
 
-std::vector<Vertex> vertices;
+std::vector<GridVertex> vertices;
 std::vector<uint32_t> indices;
 std::vector<Vertex> groundVertices;
 Buffer groundBuffer;
@@ -169,12 +169,13 @@ main (int argc, char** argv, char** envp) {
     {
         for (int z = 0; z < count; z++) {
             for (int x = 0; x < count; x++) {
-                Vertex vertex = {};
+                GridVertex vertex = {};
                 vertex.pos = {
                     x * (1/(float)density),
                     0.0f,
                     z * (1/(float)density),
                 };
+                vertex.type = vertices.size() % 11;
                 indices.push_back(vertices.size());
                 vertices.push_back(vertex);
             }
@@ -782,7 +783,7 @@ main (int argc, char** argv, char** envp) {
 
 	LOG(INFO) << "Creating billboard pipeline...";
     {
-        pipeline = vk.createPipeline(
+        pipeline = vk.createPipeline<GridVertex>(
             "shaders/triangle",
             defaultRenderPass,
             defaultDescriptorSetLayout
@@ -791,7 +792,7 @@ main (int argc, char** argv, char** envp) {
 
 	LOG(INFO) << "Creating grass pipeline...";
     {
-        grassPipeline = vk.createPipeline(
+        grassPipeline = vk.createPipeline<Vertex>(
             "shaders/ground",
             defaultRenderPass,
             defaultDescriptorSetLayout
@@ -813,8 +814,8 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Vertex buffers. */
     {
-        scene.vertices = vk.createVertexBuffer(vertices);
-        groundBuffer = vk.createVertexBuffer(groundVertices);
+        scene.vertices = vk.createVertexBuffer<GridVertex>(vertices);
+        groundBuffer = vk.createVertexBuffer<Vertex>(groundVertices);
     }
 
     /* NOTE(jan): Index buffer. */

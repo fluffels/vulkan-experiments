@@ -29,6 +29,34 @@ struct Vertex {
     }
 };
 
+struct GridVertex: public Vertex {
+    glm::vec3 pos;
+    uint8_t type;
+
+    static VkVertexInputBindingDescription
+    getInputBindingDescription() {
+        VkVertexInputBindingDescription i = {};
+        i.binding = 0;
+        i.stride = sizeof(GridVertex);
+        i.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        return i;
+    }
+
+    static std::array<VkVertexInputAttributeDescription, 2>
+    getInputAttributeDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 2> i = {};
+        i[0].binding = 0;
+        i[0].location = 0;
+        i[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        i[0].offset = offsetof(GridVertex, pos);
+        i[1].binding = 0;
+        i[1].location = 1;
+        i[1].format = VK_FORMAT_R8_UINT;
+        i[1].offset = offsetof(GridVertex, type);
+        return i;
+    }
+};
+
 struct Queue {
     VkQueue q;
     int family_index;
@@ -287,7 +315,7 @@ public:
 
         void* data;
         vkMapMemory(this->device, staging.memory, 0, size, 0, &data);
-        memcpy(data, contents, (size_t)size);
+            memcpy(data, contents, (size_t)size);
         vkUnmapMemory(this->device, staging.memory);
 
         auto result = this->createBuffer(
@@ -352,8 +380,9 @@ public:
         return result;
     }
 
+    template<typename V>
     Buffer
-    createVertexBuffer(const std::vector<Vertex>& vertices) const {
+    createVertexBuffer(const std::vector<V>& vertices) const {
         auto result = this->createDeviceLocalBuffer(
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
             vector_size(vertices),
@@ -552,6 +581,7 @@ public:
         return result;
     }
 
+    template<typename V>
     Pipeline
     createPipeline(const std::filesystem::path& path,
                    VkRenderPass renderPass,
@@ -584,8 +614,8 @@ public:
             }
         }
 
-        auto bindingDescription = Vertex::getInputBindingDescription();
-        auto attributeDescriptions = Vertex::getInputAttributeDescriptions();
+        auto bindingDescription = V::getInputBindingDescription();
+        auto attributeDescriptions = V::getInputAttributeDescriptions();
         VkPipelineVertexInputStateCreateInfo vertexInput = {};
         vertexInput.sType =
             VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
