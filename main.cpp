@@ -50,6 +50,7 @@ struct Scene {
     Buffer vertices;
     MVP mvp;
     Image texture;
+    Image groundTexture;
 	Image colour;
     Image depth;
 };
@@ -755,17 +756,25 @@ main (int argc, char** argv, char** envp) {
 
     VkDescriptorSetLayout defaultDescriptorSetLayout;
     {
-        std::vector<VkDescriptorSetLayoutBinding> bindings(2);
-        bindings[0].binding = 0;
-        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        bindings[0].descriptorCount = 1;
-		bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT;
-        bindings[0].pImmutableSamplers = nullptr;
-        bindings[1].binding = 1;
-        bindings[1].descriptorCount = 1;
-        bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        bindings[1].pImmutableSamplers = nullptr;
+        std::vector<VkDescriptorSetLayoutBinding> bindings;
+        {
+            VkDescriptorSetLayoutBinding b = {};
+            b.binding = 0;
+            b.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            b.descriptorCount = 1;
+            b.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT;
+            b.pImmutableSamplers = nullptr;
+            bindings.push_back(b);
+        }
+        for (int i = 0; i < 2; i++) {
+            VkDescriptorSetLayoutBinding b = {};
+            b.binding = 1 + i;
+            b.descriptorCount = 1;
+            b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+            b.pImmutableSamplers = nullptr;
+            bindings.push_back(b);
+        }
         defaultDescriptorSetLayout = vk.createDescriptorSetLayout(bindings);
     }
 
@@ -823,6 +832,7 @@ main (int argc, char** argv, char** envp) {
     }
 
     scene.texture = vk.createTexture("grass_square.png");
+    scene.groundTexture = vk.createTexture("ground.jpg", true);
 
 	/* NOTE(jan): Colour buffer. */
 	{
@@ -890,11 +900,19 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Descriptor pool. */
     VkDescriptorPool defaultDescriptorPool;
     {
-        std::vector<VkDescriptorPoolSize> size(2);
-        size[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        size[0].descriptorCount = 1;
-        size[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        size[1].descriptorCount = 1;
+        std::vector<VkDescriptorPoolSize> size;
+        {
+            VkDescriptorPoolSize s = {};
+            s.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            s.descriptorCount = 1;
+            size.push_back(s);
+        }
+        for (int i = 0; i < 2; i++) {
+            VkDescriptorPoolSize s = {};
+            s.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            s.descriptorCount = 1;
+            size.push_back(s);
+        }
         defaultDescriptorPool = vk.createDescriptorPool(size);
     }
 
@@ -907,33 +925,55 @@ main (int argc, char** argv, char** envp) {
             defaultDescriptorPool, layouts
         );
 
-        VkDescriptorBufferInfo dbi = {};
-        dbi.buffer = scene.uniforms.buffer;
-        dbi.offset = 0;
-        dbi.range = sizeof(scene.mvp);
+        std::vector<VkWriteDescriptorSet> writes;
+        {
+            VkDescriptorBufferInfo i = {};
+            i.buffer = scene.uniforms.buffer;
+            i.offset = 0;
+            i.range = sizeof(scene.mvp);
+            VkWriteDescriptorSet w = {};
+            w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w.dstSet = defaultDescriptorSet;
+            w.dstBinding = 0;
+            w.dstArrayElement = 0;
+            w.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            w.descriptorCount = 1;
+            w.pBufferInfo = &i;
+            writes.push_back(w);
+        }
+        {
+            VkDescriptorImageInfo i = {};
+            i.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            i.imageView = scene.texture.v;
+            i.sampler = scene.texture.s;
+            VkWriteDescriptorSet w = {};
+            w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w.dstSet = defaultDescriptorSet;
+            w.dstBinding = 1;
+            w.dstArrayElement = 0;
+            w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            w.descriptorCount = 1;
+            w.pImageInfo = &i;
+            writes.push_back(w);
+        }
+        {
+            VkDescriptorImageInfo i = {};
+            i.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            i.imageView = scene.groundTexture.v;
+            i.sampler = scene.groundTexture.s;
+            VkWriteDescriptorSet w = {};
+            w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w.dstSet = defaultDescriptorSet;
+            w.dstBinding = 2;
+            w.dstArrayElement = 0;
+            w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            w.descriptorCount = 1;
+            w.pImageInfo = &i;
+            writes.push_back(w);
+        }
 
-        VkDescriptorImageInfo dii = {};
-        dii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        dii.imageView = scene.texture.v;
-        dii.sampler = scene.texture.s;
-
-        VkWriteDescriptorSet wds[2] = {};
-        wds[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        wds[0].dstSet = defaultDescriptorSet;
-        wds[0].dstBinding = 0;
-        wds[0].dstArrayElement = 0;
-        wds[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        wds[0].descriptorCount = 1;
-        wds[0].pBufferInfo = &dbi;
-        wds[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        wds[1].dstSet = defaultDescriptorSet;
-        wds[1].dstBinding = 1;
-        wds[1].dstArrayElement = 0;
-        wds[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        wds[1].descriptorCount = 1;
-        wds[1].pImageInfo = &dii;
-
-        vkUpdateDescriptorSets(vk.device, 2, wds, 0, nullptr);
+        vkUpdateDescriptorSets(vk.device, writes.size(), writes.data(),
+                               0, nullptr);
     }
 
     /* NOTE(jan): Command buffer creation. */
@@ -1242,7 +1282,11 @@ main (int argc, char** argv, char** envp) {
     vkDestroySampler(vk.device, scene.texture.s, nullptr);
     vkDestroyImageView(vk.device, scene.texture.v, nullptr);
     vkDestroyImage(vk.device, scene.texture.i, nullptr);
+    vkDestroySampler(vk.device, scene.groundTexture.s, nullptr);
+    vkDestroyImageView(vk.device, scene.groundTexture.v, nullptr);
+    vkDestroyImage(vk.device, scene.groundTexture.i, nullptr);
     vkFreeMemory(vk.device, scene.texture.m, nullptr);
+    vkFreeMemory(vk.device, scene.groundTexture.m, nullptr);
     vkFreeMemory(vk.device, scene.indices.memory, nullptr);
     vkDestroyBuffer(vk.device, scene.indices.buffer, nullptr);
     vkFreeMemory(vk.device, scene.vertices.memory, nullptr);

@@ -7,6 +7,8 @@ layout (binding=0) uniform Uniforms {
     mat4 proj;
 } u;
 
+layout (location=0) out vec2 texCoord;
+
 layout (location=0) in vec3 pos;
 
 out gl_PerVertex {
@@ -15,4 +17,5 @@ out gl_PerVertex {
 
 void main() {
     gl_Position = u.proj * u.view * u.model * vec4(pos, 1.0);
+	texCoord = vec2(pos.x, pos.z);
 }

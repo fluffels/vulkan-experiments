@@ -427,7 +427,8 @@ public:
     }
 
     Image
-    createTexture(const std::filesystem::path& imagePath) {
+    createTexture(const std::filesystem::path& imagePath,
+                  bool tile=false) {
         int width;
         int height;
         int depth;
@@ -506,14 +507,16 @@ public:
         );
         vkDestroyBuffer(this->device, staging.buffer, nullptr);
         vkFreeMemory(this->device, staging.memory, nullptr);
+        auto addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        if (tile) addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         {
             VkSamplerCreateInfo i = {};
             i.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
             i.magFilter = VK_FILTER_LINEAR;
             i.minFilter = VK_FILTER_LINEAR;
-            i.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            i.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            i.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            i.addressModeU = addressMode;
+            i.addressModeV = addressMode;
+            i.addressModeW = addressMode;
             i.anisotropyEnable = VK_TRUE;
             i.maxAnisotropy = 16;
             i.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
