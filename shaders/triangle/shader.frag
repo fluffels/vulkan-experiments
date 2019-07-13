@@ -2,7 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(binding=1) uniform sampler2D tex;
-layout(binding=3) uniform sampler2D noise;
+layout(binding=3) uniform sampler2D noiseTex;
 
 layout(location=0) out vec4 outColor;
 
@@ -24,7 +24,7 @@ void main() {
 		discard;
 	}
 
-	float noise = texture(noise, gridCoord).x;
+	float noise = texture(noiseTex, gridCoord).x;
 	vec3 noiseColor = mix(yellow, green, noise);
 
 	vec3 mixedColor = mix(texColor.xyz, noiseColor, 0.9f);
