@@ -10,3 +10,4 @@ Experimenting with the Vulkan graphics API.
 
 # Credits
 1. Ground texture from [here](https://opengameart.org/content/grass-001).
+2. Noise texture from [here](http://cpetry.github.io/TextureGenerator-Online/).
