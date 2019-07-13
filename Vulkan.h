@@ -384,12 +384,15 @@ public:
     }
 
     Image
-    createTexture(std::filesystem::path imageSource) {
+    createTexture(const std::filesystem::path& imagePath) {
         int width;
         int height;
         int depth;
-        stbi_uc* pixels = stbi_load(
-            "grass_square.png", &width, &height, &depth, STBI_rgb_alpha
+        auto bytes = readFile(imagePath);
+        stbi_uc* pixels = stbi_load_from_memory(
+            reinterpret_cast<const stbi_uc*>(bytes.data()), bytes.size(),
+            &width, &height, &depth,
+            STBI_rgb_alpha
         );
         if (!pixels) {
             throw std::runtime_error("Could not load texture.");
