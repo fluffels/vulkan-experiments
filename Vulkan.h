@@ -309,6 +309,24 @@ public:
         return result;
     }
 
+    VkDescriptorSetLayout
+    createDescriptorSetLayout(
+        const std::vector<VkDescriptorSetLayoutBinding>& bindings
+    ) {
+        VkDescriptorSetLayoutCreateInfo i = {};
+        i.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        i.bindingCount = bindings.size();
+        i.pBindings = bindings.data();
+        VkDescriptorSetLayout result;
+        VkResult code = vkCreateDescriptorSetLayout(
+            this->device, &i, nullptr, &result
+        );
+        if (code != VK_SUCCESS) {
+            throw std::runtime_error("Could not create descriptor set layout.");
+        }
+        return result;
+    }
+
     VkDescriptorPool
     createDescriptorPool(const std::vector<VkDescriptorPoolSize>& size) {
         VkDescriptorPoolCreateInfo i = {};

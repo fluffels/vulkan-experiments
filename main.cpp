@@ -756,7 +756,7 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Descriptor set. */
     VkDescriptorSetLayout defaultDescriptorSetLayout;
     {
-        VkDescriptorSetLayoutBinding bindings[2];
+        std::vector<VkDescriptorSetLayoutBinding> bindings(2);
         bindings[0].binding = 0;
         bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[0].descriptorCount = 1;
@@ -767,18 +767,7 @@ main (int argc, char** argv, char** envp) {
         bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         bindings[1].pImmutableSamplers = nullptr;
-
-        VkDescriptorSetLayoutCreateInfo i = {};
-        i.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        i.bindingCount = 2;
-        i.pBindings = bindings;
-
-        vk_check_success(
-            vkCreateDescriptorSetLayout(
-                vk.device, &i, nullptr, &defaultDescriptorSetLayout
-            ),
-            "Could not create descriptor set layout."
-        );
+        defaultDescriptorSetLayout = vk.createDescriptorSetLayout(bindings);
     }
 
     /* NOTE(jan): Create pipeline. */
