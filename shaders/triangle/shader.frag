@@ -24,10 +24,14 @@ void main() {
 		discard;
 	}
 
-	float noise = texture(noiseTex, gridCoord).x;
-	vec3 noiseColor = mix(yellow, green, noise);
+	float texNoise = texture(noiseTex, texCoord).x;
+	if (texNoise < 0.5) {
+		discard;
+	}
 
-	vec3 mixedColor = mix(texColor.xyz, noiseColor, 0.9f);
+	float gridNoise = texture(noiseTex, gridCoord).x;
+	vec3 colorVariation = mix(yellow, green, gridNoise);
+	vec3 mixedColor = mix(texColor.xyz, colorVariation, 0.9f);
 
 	outColor = vec4(mixedColor.xyz, texColor.w);
 }
