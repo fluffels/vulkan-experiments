@@ -31,7 +31,7 @@ void main() {
 
 	float gridNoise = texture(noiseTex, gridCoord).x;
 	vec3 colorVariation = mix(yellow, green, gridNoise);
-	vec3 mixedColor = mix(texColor.xyz, colorVariation, 0.9f);
+	vec3 mixedColor = mix(texColor.xyz, colorVariation, 0.7f);
 
 	outColor = vec4(mixedColor.xyz, texColor.w);
 }
