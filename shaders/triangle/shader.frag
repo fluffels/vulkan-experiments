@@ -15,19 +15,14 @@ const vec3 yellow = vec3(0.933333f, 0.862745f, 0.509803f);
 
 void main() {
 	vec2 texCoord = geometryTexCoord;
-	if (geometryType % 2 == 0) {
-		texCoord.x = 1.0f - texCoord.x;
-	}
+	texCoord.x += (geometryType % 4) * 0.25f;
+	texCoord.y += (geometryType / 4) * 0.25f;
 
     vec4 texColor = texture(tex, texCoord);
-	if (texColor.a < 0.85) {
-		discard;
-	}
+	if (texColor.a < 0.50) { discard; }
 
 	float texNoise = texture(noiseTex, texCoord).x;
-	if (texNoise < 0.5) {
-		discard;
-	}
+	if (texNoise < 0.1) { discard; }
 
 	float gridNoise = texture(noiseTex, gridCoord).x;
 	vec3 colorVariation = mix(yellow, green, gridNoise);

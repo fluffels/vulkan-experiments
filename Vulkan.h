@@ -57,6 +57,34 @@ struct GridVertex: public Vertex {
     }
 };
 
+struct TextureVertex: public Vertex {
+    glm::vec3 pos;
+    glm::vec2 tex;
+
+    static VkVertexInputBindingDescription
+    getInputBindingDescription() {
+        VkVertexInputBindingDescription i = {};
+        i.binding = 0;
+        i.stride = sizeof(TextureVertex);
+        i.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        return i;
+    }
+
+    static std::array<VkVertexInputAttributeDescription, 2>
+    getInputAttributeDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 2> i = {};
+        i[0].binding = 0;
+        i[0].location = 0;
+        i[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        i[0].offset = offsetof(TextureVertex, pos);
+        i[1].binding = 0;
+        i[1].location = 1;
+        i[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        i[1].offset = offsetof(TextureVertex, tex);
+        return i;
+    }
+};
+
 struct Queue {
     VkQueue q;
     int family_index;

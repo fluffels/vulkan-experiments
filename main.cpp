@@ -58,10 +58,10 @@ struct Scene {
 
 std::vector<GridVertex> vertices;
 std::vector<uint32_t> indices;
-std::vector<Vertex> groundVertices;
+std::vector<TextureVertex> groundVertices;
 Buffer groundBuffer;
-auto eye = glm::vec3(50.0f, -1.0f, 50.0f);
-auto at = glm::vec3(0.0f, -1.0f, 0.0f);
+auto eye = glm::vec3(50.0f, -2.0f, 50.0f);
+auto at = glm::vec3(0.0f, -2.0f, 0.0f);
 auto up = glm::vec3(0.0f, 1.0f, 0.0f);
 int keyboard[GLFW_KEY_LAST] = {GLFW_RELEASE};
 
@@ -182,12 +182,16 @@ main (int argc, char** argv, char** envp) {
             }
         }
     }
-    Vertex v0, v1, v2, v3;
+    TextureVertex v0, v1, v2, v3;
     const float maxCoord = (float)(extent + 1);
     v0.pos = glm::vec3(-1.0f, 0.0f, -1.0f);
+    v0.tex= glm::vec2(0.0f, 0.0f);
 	v1.pos = glm::vec3(maxCoord, 0.0f, -1.0f);
+    v1.tex= glm::vec2(1.0f, 0.0f);
 	v2.pos = glm::vec3(-1.0f, 0.0f, maxCoord);
+    v2.tex= glm::vec2(0.0f, 1.0f);
 	v3.pos = glm::vec3(maxCoord, 0.0f, maxCoord);
+    v3.tex= glm::vec2(1.0f, 1.0f);
     groundVertices.push_back(v0);
     groundVertices.push_back(v1);
     groundVertices.push_back(v2);
@@ -793,7 +797,7 @@ main (int argc, char** argv, char** envp) {
 
 	LOG(INFO) << "Creating grass pipeline...";
     {
-        grassPipeline = vk.createPipeline<Vertex>(
+        grassPipeline = vk.createPipeline<TextureVertex>(
             "shaders/ground",
             defaultRenderPass,
             defaultDescriptorSetLayout
@@ -816,7 +820,7 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Vertex buffers. */
     {
         scene.vertices = vk.createVertexBuffer<GridVertex>(vertices);
-        groundBuffer = vk.createVertexBuffer<Vertex>(groundVertices);
+        groundBuffer = vk.createVertexBuffer<TextureVertex>(groundVertices);
     }
 
     /* NOTE(jan): Index buffer. */
@@ -835,7 +839,7 @@ main (int argc, char** argv, char** envp) {
         );
     }
 
-    scene.texture = vk.createTexture("grass_square.png");
+    scene.texture = vk.createTexture("grass.png");
     scene.groundTexture = vk.createTexture("ground.jpg", true);
     scene.noise = vk.createTexture("noise.png");
 
@@ -1043,6 +1047,7 @@ main (int argc, char** argv, char** envp) {
             0, nullptr
         );
         VkDeviceSize offsets[] = {0};
+        
         vkCmdBindPipeline(
             vk.swap.command_buffers[i],
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
