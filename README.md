@@ -62,5 +62,6 @@ set(glm_INCLUDE_DIRS D:/Lib/glm)
 7. Build
 
 # Credits
+1. Grass texture from [here](https://opengameart.org/content/grass-pack-03).
 1. Ground texture from [here](https://opengameart.org/content/grass-001).
-2. Noise texture from [here](http://cpetry.github.io/TextureGenerator-Online/).
+1. Noise texture from [here](http://cpetry.github.io/TextureGenerator-Online/).
