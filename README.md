@@ -8,6 +8,11 @@ It's quite old, and so contains a number of compromises that may not be necessar
 In part, I'm looking at how the techniques from that paper can be implemented on today's hardware and which constraints could be relaxed.
 
 # Compilation
+## Requirements
+1. Install [VulkanSDK~=1.1.108.0](https://vulkan.lunarg.com/)
+2. Install [glfw~=3.3](https://github.com/glfw/glfw/releases/tag/3.3)
+3. Install [GLM~=0.9.9.5](https://github.com/g-truc/glm/releases/tag/0.9.9.5)
+
 ## Linux
 1. `source /path/to/VulkanSDK/1.0.65.0/setup-env.sh`
 1. `cmake .`
