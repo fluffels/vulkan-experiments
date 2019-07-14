@@ -10,8 +10,8 @@ In part, I'm looking at how the techniques from that paper can be implemented on
 # Compilation
 ## Requirements
 1. Install [VulkanSDK~=1.1.108.0](https://vulkan.lunarg.com/)
-2. Install [glfw~=3.3](https://github.com/glfw/glfw/releases/tag/3.3)
-3. Install [GLM~=0.9.9.5](https://github.com/g-truc/glm/releases/tag/0.9.9.5)
+1. Install [glfw~=3.3](https://github.com/glfw/glfw/releases/tag/3.3)
+1. Install [GLM~=0.9.9.5](https://github.com/g-truc/glm/releases/tag/0.9.9.5)
 
 ## Linux
 1. `source /path/to/VulkanSDK/1.0.65.0/setup-env.sh`
@@ -20,19 +20,19 @@ In part, I'm looking at how the techniques from that paper can be implemented on
 
 ## Windows
 1. Install Vulkan, glfw3 and glm.
-1. Create `glfw3Config.cmake` containing lines such as these:
+2. Create `glfw3Config.cmake` containing lines such as these:
 ```
 set(glfw3_INCLUDE_DIRS D:/Lib/glfw-3.3.bin.WIN64/include)
 set(glfw3_LIBRARIES D:/Lib/glfw-3.3.bin.WIN64/lib-vc2019/glfw3dll.lib)
 ```
-1. Create `glmConfig.cmake` containing a line such as this:
+3. Create `glmConfig.cmake` containing a line such as this:
 ```
 set(glm_INCLUDE_DIRS D:/Lib/glm)
 ```
-1. Open directory in Visual Studio
-1. Under `Project -> CMake Settings for <Project Name>` add the path to `glfw3Config.cmake` as the environment variable `glf3_DIR`.
-1. Under `Project -> CMake Settings for <Project Name>` add the path to `glmConfig.cmake` as the environment variable `glm_DIR`.
-1. Build
+4. Open directory in Visual Studio
+5. Under `Project -> CMake Settings for <Project Name>` add the path to `glfw3Config.cmake` as the environment variable `glf3_DIR`.
+6. Under `Project -> CMake Settings for <Project Name>` add the path to `glmConfig.cmake` as the environment variable `glm_DIR`.
+7. Build
 
 # Credits
 1. Ground texture from [here](https://opengameart.org/content/grass-001).
