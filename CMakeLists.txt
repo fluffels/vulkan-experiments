@@ -7,7 +7,7 @@ find_package(Vulkan REQUIRED)
 include_directories(${glfw3_INCLUDE_DIRS})
 include_directories(${glm_INCLUDE_DIRS})
 include_directories(${Vulkan_INCLUDE_DIRS})
-add_executable (main main.cpp)
+add_executable (main main.cpp WangTiling.cpp WangTile.cpp)
 target_link_libraries (main ${Vulkan_LIBRARIES} ${glfw3_LIBRARIES})
 set_target_properties(
     main PROPERTIES

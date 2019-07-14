@@ -27,6 +27,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
+#include "WangTiling.h"
 #include "FS.h"
 #include "Memory.h"
 #include "Buffer.h"
@@ -165,6 +166,7 @@ main (int argc, char** argv, char** envp) {
 	const int extent = 100;
 	const int density = 2;
 	const int count = extent * density;
+    WangTiling wangTiling(count, count);
     {
         for (int z = 0; z < count; z++) {
             for (int x = 0; x < count; x++) {
@@ -174,7 +176,7 @@ main (int argc, char** argv, char** envp) {
                     0.0f,
                     z * (1/(float)density),
                 };
-                vertex.type = vertices.size() % 11;
+                vertex.type = wangTiling.getTile(z, x).getID();
                 indices.push_back(vertices.size());
                 vertices.push_back(vertex);
             }
