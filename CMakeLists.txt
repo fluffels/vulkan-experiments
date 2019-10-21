@@ -10,7 +10,8 @@ include_directories(${Vulkan_INCLUDE_DIRS})
 add_executable (main main.cpp WangTiling.cpp WangTile.cpp)
 target_link_libraries (main ${Vulkan_LIBRARIES} ${glfw3_LIBRARIES})
 set_target_properties(
-    main PROPERTIES
+    main
+    PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_HOME_DIRECTORY}
 )
 add_custom_target(
