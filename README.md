@@ -36,12 +36,14 @@ Lighting and wind are still unimplemented at time of writing.
 
 # Compilation
 ## Requirements
-1. Install [VulkanSDK~=1.1.108.0](https://vulkan.lunarg.com/)
-1. Install [glfw~=3.3](https://github.com/glfw/glfw/releases/tag/3.3)
-1. Install [GLM~=0.9.9.5](https://github.com/g-truc/glm/releases/tag/0.9.9.5)
+1. [VulkanSDK~=1.121.2](https://vulkan.lunarg.com/sdk/home#windows)
+1. [glfw~=3.3](https://github.com/glfw/glfw/releases/tag/3.3)
+1. [GLM~=0.9.9.6](https://github.com/g-truc/glm/releases/tag/0.9.9.6)
 
 ## Linux
-1. `source /path/to/VulkanSDK/1.0.65.0/setup-env.sh`
+1. Install `VulkanSDK`, `glfw3`, and `glm`.
+   See `.travis.yml` for instructions if you want to install from source.
+1. `source /path/to/VulkanSDK/1.1.121.2/setup-env.sh`
 1. `cmake .`
 1. `make`
 
