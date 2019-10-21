@@ -42,6 +42,9 @@ VulkanSDK
 main
 build/
 
+# Debugging Products
+*.pdb
+
 # Execution Products
 logs
 
