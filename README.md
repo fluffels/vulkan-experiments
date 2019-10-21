@@ -47,7 +47,7 @@ Lighting and wind are still unimplemented at time of writing.
 
 ## Windows
 1. Install Vulkan, glfw3 and glm.
-1. Remember to set Vulkan_LIBRARY and Vulkan_INCLUDE_DIR
+1. Remember to set `Vulkan_LIBRARY` and `Vulkan_INCLUDE_DIR`
 1. Create `glfw3Config.cmake` containing lines such as these:
 ```
 set(glfw3_INCLUDE_DIRS D:/Lib/glfw-3.3.bin.WIN64/include)
