@@ -47,6 +47,7 @@ build/
 
 # Execution Products
 logs
+frames.csv
 
 # VisualStudio Trash
 .vs/*

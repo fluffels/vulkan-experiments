@@ -1115,6 +1115,10 @@ main (int argc, char** argv, char** envp) {
         1000.0f
     );
 
+    /* NOTE(jan): Log frame times. */
+    std::ofstream frameTimeFile("frames.csv", std::ios::out);
+    frameTimeFile << "'frameID', 'ms_d'" << std::endl;
+
     /* NOTE(jan): All calculations should be scaled by the time it took
      * to render the last frame. */
     auto start_f = std::chrono::high_resolution_clock::now();
@@ -1197,6 +1201,8 @@ main (int argc, char** argv, char** envp) {
             float, std::chrono::seconds::period>(this_f - start_f).count();
 
         frame_count++;
+        frameTimeFile << frame_count << ", " << delta_f * 1000 << std::endl;
+
         float fps = 1.0f / delta_f;
         char title[255];
         snprintf(
@@ -1291,6 +1297,8 @@ main (int argc, char** argv, char** envp) {
 			LOG(INFO) << "at(" << at.x << " " << at.y << " " << at.z << ")";
 		}
     }
+
+    frameTimeFile.close();
 
     /* NOTE(jan): Wait for everything to complete before we start destroying
      * stuff. */
