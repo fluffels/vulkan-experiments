@@ -46,7 +46,9 @@ Lighting and wind are still unimplemented at time of writing.
 1. `make`
 
 ## Windows
-1. Install Vulkan, glfw3 and glm.
+1. Install [Vulkan](https://vulkan.lunarg.com/sdk/home#windows),
+   [glfw3](https://www.glfw.org/) and
+   [glm](https://glm.g-truc.net/0.9.9/index.html).
 1. Remember to set `Vulkan_LIBRARY` and `Vulkan_INCLUDE_DIR`
 1. Create `glfw3Config.cmake` containing lines such as these:
 ```
@@ -64,6 +66,6 @@ set(glm_INCLUDE_DIRS D:/Lib/glm)
 1. Build
 
 # Credits
-1. Grass texture from [here](https://opengameart.org/content/grass-pack-03).
-1. Ground texture from [here](https://opengameart.org/content/grass-001).
-1. Noise texture from [here](http://cpetry.github.io/TextureGenerator-Online/).
+1. [Grass texture](https://opengameart.org/content/grass-pack-03)
+1. [Ground texture](https://opengameart.org/content/grass-001)
+1. [Noise texture](http://cpetry.github.io/TextureGenerator-Online/)
