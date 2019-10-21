@@ -1117,8 +1117,11 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): All calculations should be scaled by the time it took
      * to render the last frame. */
+    auto start_f = std::chrono::high_resolution_clock::now();
     auto last_f = std::chrono::high_resolution_clock::now();
     auto this_f = std::chrono::high_resolution_clock::now();
+    auto frame_count = 0;
+    float total_delta_f = 0.0f;
     float delta_f = 0.0f;
 
     LOG(INFO) << "Entering main loop...";
@@ -1190,10 +1193,19 @@ main (int argc, char** argv, char** envp) {
         this_f = std::chrono::high_resolution_clock::now();
         delta_f = std::chrono::duration<
             float, std::chrono::seconds::period>(this_f - last_f).count();
+        total_delta_f = std::chrono::duration<
+            float, std::chrono::seconds::period>(this_f - start_f).count();
 
+        frame_count++;
         float fps = 1.0f / delta_f;
         char title[255];
-        snprintf(title, 255, "FPS: %f", fps);
+        snprintf(
+            title, 255,
+            "avg_ms_d: %f   ms_d: %f   FPS: %f",
+            total_delta_f * 1000 / frame_count,
+            delta_f*1000,
+            fps
+        );
         glfwSetWindowTitle(window, title);
 
         glfwPollEvents();
