@@ -10,9 +10,6 @@ addons:
 language:
   - cpp
 
-env:
-  - CMAKE_CXX_STANDARD=17
-
 install:
   - git clone https://github.com/glfw/glfw glfw
   - cd glfw
