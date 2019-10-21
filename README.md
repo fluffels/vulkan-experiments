@@ -47,19 +47,21 @@ Lighting and wind are still unimplemented at time of writing.
 
 ## Windows
 1. Install Vulkan, glfw3 and glm.
-2. Create `glfw3Config.cmake` containing lines such as these:
+1. Remember to set Vulkan_LIBRARY and Vulkan_INCLUDE_DIR
+1. Create `glfw3Config.cmake` containing lines such as these:
 ```
 set(glfw3_INCLUDE_DIRS D:/Lib/glfw-3.3.bin.WIN64/include)
 set(glfw3_LIBRARIES D:/Lib/glfw-3.3.bin.WIN64/lib-vc2019/glfw3dll.lib)
 ```
-3. Create `glmConfig.cmake` containing a line such as this:
+1. Create `glmConfig.cmake` containing a line such as this:
 ```
 set(glm_INCLUDE_DIRS D:/Lib/glm)
 ```
-4. Open directory in Visual Studio
-5. Under `Project -> CMake Settings for <Project Name>` add the path to `glfw3Config.cmake` as the environment variable `glf3_DIR`.
-6. Under `Project -> CMake Settings for <Project Name>` add the path to `glmConfig.cmake` as the environment variable `glm_DIR`.
-7. Build
+1. Copy libglfw.dll to `C:\Windows\System32`
+1. Open directory in Visual Studio
+1. Under `Project -> CMake Settings for <Project Name>` add the path to `glfw3Config.cmake` as the environment variable `glf3_DIR`.
+1. Under `Project -> CMake Settings for <Project Name>` add the path to `glmConfig.cmake` as the environment variable `glm_DIR`.
+1. Build
 
 # Credits
 1. Grass texture from [here](https://opengameart.org/content/grass-pack-03).
