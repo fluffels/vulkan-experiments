@@ -1117,7 +1117,7 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Log frame times. */
     std::ofstream frameTimeFile("frames.csv", std::ios::out);
-    frameTimeFile << "'frameID', 'ms_d'" << std::endl;
+    frameTimeFile << "\"frameID\", \"ms_d\"" << std::endl;
 
     /* NOTE(jan): All calculations should be scaled by the time it took
      * to render the last frame. */
