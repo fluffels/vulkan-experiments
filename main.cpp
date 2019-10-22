@@ -1297,6 +1297,28 @@ main (int argc, char** argv, char** envp) {
             eye += right * delta * delta_f;
             at += right * delta * delta_f;
         }
+        if (keyboard[GLFW_KEY_Z] == GLFW_PRESS) {
+            eye.x = 100;
+            eye.y = -1;
+            eye.z = 100;
+            at.x = 0;
+            at.z = 0;
+            glm::vec3 forward = glm::normalize(at - eye);
+            glm::vec3 right = glm::cross(forward, up);
+            eye += right * delta * delta_f;
+            at += right * delta * delta_f;
+        }
+        if (keyboard[GLFW_KEY_X] == GLFW_PRESS) {
+            eye.x = 0;
+            eye.y = -1;
+            eye.z = 0;
+            at.x = 100;
+            at.z = 100;
+            glm::vec3 forward = glm::normalize(at - eye);
+            glm::vec3 right = glm::cross(forward, up);
+            eye += right * delta * delta_f;
+            at += right * delta * delta_f;
+        }
         if (keyboard[GLFW_KEY_SPACE] == GLFW_PRESS) {
             eye -= up * delta * delta_f;
             at -= up * delta * delta_f;
