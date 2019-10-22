@@ -55,6 +55,9 @@ frames.csv
 out
 CMakeSettings.json
 
+# VSCode
+.vscode/c_cpp_properties.json
+
 # CLion Trash
 .idea/.name
 .idea/customTargets.xml
@@ -64,7 +67,3 @@ CMakeSettings.json
 .idea/vcs.xml
 .idea/vulkan-experiments.iml
 .idea/workspace.xml
-.vscode/settings.json
-.vscode/c_cpp_properties.json
-.vscode/settings.json
-.vscode/settings.json
