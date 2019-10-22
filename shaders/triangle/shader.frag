@@ -3,6 +3,7 @@
 
 layout(binding=1) uniform sampler2D tex;
 layout(binding=3) uniform sampler2D noiseTex;
+layout(binding=4) uniform sampler2D texOpacity;
 
 layout(location=0) out vec4 outColor;
 
@@ -19,7 +20,8 @@ void main() {
 	texCoord.y += (geometryType / 4) * 0.25f;
 
     vec4 texColor = texture(tex, texCoord);
-	if (texColor.a < 0.50) { discard; }
+	vec4 texOpacity = texture(tex, texCoord);
+	if (texOpacity.r == 0) { discard; }
 
 	float texNoise = texture(noiseTex, texCoord).x;
 	if (texNoise < 0.1) { discard; }

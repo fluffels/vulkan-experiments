@@ -50,6 +50,7 @@ struct Scene {
     Buffer vertices;
     MVP mvp;
     Image texture;
+    Image grassOpacity;
     Image groundTexture;
 	Image colour;
     Image depth;
@@ -774,7 +775,7 @@ main (int argc, char** argv, char** envp) {
             b.pImmutableSamplers = nullptr;
             bindings.push_back(b);
         }
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 4; i++) {
             VkDescriptorSetLayoutBinding b = {};
             b.binding = 1 + i;
             b.descriptorCount = 1;
@@ -840,6 +841,7 @@ main (int argc, char** argv, char** envp) {
     }
 
     scene.texture = vk.createTexture("grass.png");
+    scene.grassOpacity = vk.createTexture("grassOpacity.png");
     scene.groundTexture = vk.createTexture("ground.jpg", true);
     scene.noise = vk.createTexture("noise.png");
 
@@ -916,7 +918,7 @@ main (int argc, char** argv, char** envp) {
             s.descriptorCount = 1;
             size.push_back(s);
         }
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 4; i++) {
             VkDescriptorPoolSize s = {};
             s.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             s.descriptorCount = 1;
@@ -959,6 +961,21 @@ main (int argc, char** argv, char** envp) {
             w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             w.dstSet = defaultDescriptorSet;
             w.dstBinding = 1;
+            w.dstArrayElement = 0;
+            w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            w.descriptorCount = 1;
+            w.pImageInfo = &i;
+            writes.push_back(w);
+        }
+        {
+            VkDescriptorImageInfo i = {};
+            i.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            i.imageView = scene.grassOpacity.v;
+            i.sampler = scene.grassOpacity.s;
+            VkWriteDescriptorSet w = {};
+            w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            w.dstSet = defaultDescriptorSet;
+            w.dstBinding = 4;
             w.dstArrayElement = 0;
             w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             w.descriptorCount = 1;
