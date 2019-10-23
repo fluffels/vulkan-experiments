@@ -338,6 +338,7 @@ main (int argc, char** argv, char** envp) {
         glfwCreateWindowSurface(vk.h, window, nullptr, &vk.surface),
         "Could not create surface."
     );
+    glfwSetWindowPos(window, 10, 50);
 
     /* NOTE(jan): Physical device selection. */
     {
