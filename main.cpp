@@ -65,13 +65,14 @@ auto eye = glm::vec3(50.0f, -2.0f, 50.0f);
 auto at = glm::vec3(0.0f, -2.0f, 0.0f);
 auto up = glm::vec3(0.0f, 1.0f, 0.0f);
 int keyboard[GLFW_KEY_LAST] = {GLFW_RELEASE};
+const bool fullscreen = false;
 
 const std::vector<const char*> requiredDeviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-const int WINDOW_HEIGHT = 600;
-const int WINDOW_WIDTH = 800;
+const int WINDOW_HEIGHT = 900;
+const int WINDOW_WIDTH = 1800;
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -208,7 +209,10 @@ main (int argc, char** argv, char** envp) {
 
     LOG(INFO) << "Creating window...";
     auto window = glfwCreateWindow(
-        WINDOW_WIDTH, WINDOW_HEIGHT, "Vulkan Experiments", nullptr, nullptr
+        WINDOW_WIDTH, WINDOW_HEIGHT,
+        "Vulkan Experiments",
+        fullscreen ? glfwGetPrimaryMonitor() : nullptr,
+        nullptr
     );
     if (!window) {
         glfwTerminate();
