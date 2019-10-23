@@ -10,6 +10,7 @@ layout(location=0) out vec4 outColor;
 layout(location=0) in vec2 geometryTexCoord;
 layout(location=1) in flat vec2 gridCoord;
 layout(location=2) in flat uint geometryType;
+layout(location=3) in float distanceFromCamera;
 
 const vec3 green = vec3(0.274509f, 0.537254f, 0.086274f);
 const vec3 yellow = vec3(0.933333f, 0.862745f, 0.509803f);
@@ -19,12 +20,12 @@ void main() {
 	texCoord.x += (geometryType % 4) * 0.25f;
 	texCoord.y += (geometryType / 4) * 0.25f;
 
+	float texNoise = texture(noiseTex, texCoord).x;
+	if (texNoise < distanceFromCamera) { discard; }
+
     vec4 texColor = texture(tex, texCoord);
 	vec4 texOpacity = texture(opacityTex, texCoord);
 	if (texOpacity.x < 1.0f) { discard; }
-
-	float texNoise = texture(noiseTex, texCoord).x;
-	if (texNoise < 0.1) { discard; }
 
 	float gridNoise = texture(noiseTex, gridCoord).x;
 	vec3 colorVariation = mix(yellow, green, gridNoise);

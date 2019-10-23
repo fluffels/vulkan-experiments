@@ -14,18 +14,25 @@ layout(location=0) in uint[] vertexType;
 layout(location=0) out vec2 texCoord;
 layout(location=1) out flat vec2 gridCoord;
 layout(location=2) out flat uint geometryType;
+layout(location=3) out float distanceFromCamera;
 
 void main() {
     vec4 origin;
     vec4 pos;
 
     origin = u.view * u.model * gl_in[0].gl_Position;
+	const float DISTANCE_FROM_CAMERA = (
+		origin.x * origin.x +
+		origin.y * origin.y +
+		origin.z * origin.z
+	) / 1000.f;
 
 	pos = origin + vec4(0.0, -1.0, 0.0, 0.0);
 	gl_Position = u.proj * pos;
 	texCoord = vec2(0.0f, 0.0f);
 	gridCoord = vec2(gl_in[0].gl_Position.x, gl_in[0].gl_Position.z) / 100.0f;
 	geometryType = vertexType[0];
+	distanceFromCamera = DISTANCE_FROM_CAMERA;
 	EmitVertex();
 
 	pos = origin + vec4(0.0, 0.0, 0.0, 0.0);
@@ -33,6 +40,7 @@ void main() {
 	texCoord = vec2(0.0f, 0.25f);
 	gridCoord = vec2(gl_in[0].gl_Position.x, gl_in[0].gl_Position.z) / 100.0f;
 	geometryType = vertexType[0];
+	distanceFromCamera = DISTANCE_FROM_CAMERA;
 	EmitVertex();
 
 	pos = origin + vec4(1.0, -1.0, 0.0, 0.0);
@@ -40,6 +48,7 @@ void main() {
 	texCoord = vec2(0.25f, 0.0f);
 	gridCoord = vec2(gl_in[0].gl_Position.x, gl_in[0].gl_Position.z) / 100.0f;
 	geometryType = vertexType[0];
+	distanceFromCamera = DISTANCE_FROM_CAMERA;
 	EmitVertex();
 
     pos = origin + vec4(1.0, 0.0, 0.0, 0.0);
@@ -47,5 +56,6 @@ void main() {
 	texCoord = vec2(0.25f, 0.25f);
 	gridCoord = vec2(gl_in[0].gl_Position.x, gl_in[0].gl_Position.z) / 100.0f;
 	geometryType = vertexType[0];
+	distanceFromCamera = DISTANCE_FROM_CAMERA;
     EmitVertex();
 }
