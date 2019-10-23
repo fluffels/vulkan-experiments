@@ -179,7 +179,9 @@ main (int argc, char** argv, char** envp) {
                     z * (1/(float)density),
                 };
                 vertex.type = wangTiling.getTile(z, x).getID();
-                indices.push_back(vertices.size());
+                indices.push_back(
+                    static_cast<uint32_t>(vertices.size())
+                );
                 vertices.push_back(vertex);
             }
         }
@@ -252,7 +254,7 @@ main (int argc, char** argv, char** envp) {
         vkEnumerateInstanceLayerProperties(&count, layers_available);
         for (const auto &name_requested: layers_requested) {
             bool found = false;
-            int a = 0;
+            uint32_t a = 0;
             while ((a < count) && (!found)) {
                 auto *name_available = layers_available[a].layerName;
                 if (strcmp(name_available, name_requested) == 0) {
@@ -274,7 +276,7 @@ main (int argc, char** argv, char** envp) {
     /* NOTE(jan): Conditionally enable validation layers. */
 #ifndef NDEBUG
     if (validation_enabled) {
-        ici.enabledLayerCount = layers_requested.size();
+        ici.enabledLayerCount = static_cast<uint32_t>(layers_requested.size());
         ici.ppEnabledLayerNames = layers_requested.data();
     } else {
         ici.enabledLayerCount = 0;
@@ -511,7 +513,7 @@ main (int argc, char** argv, char** envp) {
         createInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
 #ifndef NDEBUG
         if (validation_enabled) {
-            createInfo.enabledLayerCount = layers_requested.size();
+            createInfo.enabledLayerCount = static_cast<uint32_t>(layers_requested.size());
             createInfo.ppEnabledLayerNames = layers_requested.data();
         } else {
             createInfo.enabledLayerCount = 0;
@@ -665,14 +667,14 @@ main (int argc, char** argv, char** envp) {
         vkGetSwapchainImagesKHR(vk.device, vk.swap.h, &vk.swap.l, nullptr);
         auto images = new VkImage[vk.swap.l];
         vkGetSwapchainImagesKHR(vk.device, vk.swap.h, &vk.swap.l, images);
-        for (int i = 0; i < vk.swap.l; i++) {
+        for (uint32_t i = 0; i < vk.swap.l; i++) {
             vk.swap.images[i].i = images[i];
         }
         LOG(INFO) << "Retrieved " << vk.swap.l << " swap chain images.";
     }
 
     /* NOTE(jan): Swap chain image views. */
-    for (int i = 0; i < vk.swap.l; i++) {
+    for (uint32_t i = 0; i < vk.swap.l; i++) {
         VkImageViewCreateInfo cf = {};
         cf.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         cf.image = vk.swap.images[i].i;
@@ -1018,8 +1020,13 @@ main (int argc, char** argv, char** envp) {
             writes.push_back(w);
         }
 
-        vkUpdateDescriptorSets(vk.device, writes.size(), writes.data(),
-                               0, nullptr);
+        vkUpdateDescriptorSets(
+            vk.device,
+            static_cast<uint32_t>(writes.size()),
+            writes.data(),
+            0,
+            nullptr
+        );
     }
 
     /* NOTE(jan): Command buffer creation. */
