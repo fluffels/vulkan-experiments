@@ -166,8 +166,8 @@ main (int argc, char** argv, char** envp) {
 
     LOG(INFO) << "Generating model...";
 	const int extent = 100;
-	const int density = 2;
-	const int count = extent * density;
+	const float density = 0.5;
+	const int count = static_cast<int>(extent * density);
     WangTiling wangTiling(count, count);
     {
         for (int z = 0; z < count; z++) {
@@ -849,7 +849,7 @@ main (int argc, char** argv, char** envp) {
 
     scene.texture = vk.createTexture("grass.png");
     scene.grassOpacity = vk.createTexture("grassOpacity.png");
-    scene.groundTexture = vk.createTexture("ground.jpg", true);
+    scene.groundTexture = vk.createTexture("ground.png", true);
     scene.noise = vk.createTexture("noise.png");
 
 	/* NOTE(jan): Colour buffer. */

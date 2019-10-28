@@ -1,9 +1,8 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding=1) uniform sampler2D tex;
-layout(binding=3) uniform sampler2D noiseTex;
-layout(binding=4) uniform sampler2D opacityTex;
+layout(binding=1) uniform sampler2D colorTexture;
+layout(binding=3) uniform sampler2D noiseTexture;
 
 layout(location=0) out vec4 outColor;
 
@@ -16,20 +15,23 @@ const vec3 green = vec3(0.274509f, 0.537254f, 0.086274f);
 const vec3 yellow = vec3(0.933333f, 0.862745f, 0.509803f);
 
 void main() {
-	vec2 texCoord = geometryTexCoord;
-	texCoord.x += (geometryType % 4) * 0.25f;
-	texCoord.y += (geometryType / 4) * 0.25f;
+	vec2 textureCoord = geometryTexCoord;
+	textureCoord.x += (geometryType % 4) * 0.25f;
+	textureCoord.y += (geometryType / 4) * 0.25f;
+	outColor = texture(colorTexture, textureCoord);
 
-	float texNoise = texture(noiseTex, texCoord).x;
-	if (texNoise < distanceFromCamera) { discard; }
+	/* NOTE(jan): Discard fully transparent fragments so transparency is
+	order-independent. */
+	if (outColor.w < 0.1) { discard; }
 
-    vec4 texColor = texture(tex, texCoord);
-	vec4 texOpacity = texture(opacityTex, texCoord);
-	if (texOpacity.x < 1.0f) { discard; }
+	/* NOTE(jan): Dissolve effect prevents popping. */
+	float dissolveNoiseValue = texture(noiseTexture, textureCoord).x;
+	if (dissolveNoiseValue < distanceFromCamera) { discard; }
 
-	float gridNoise = texture(noiseTex, gridCoord).x;
-	vec3 colorVariation = mix(yellow, green, gridNoise);
-	vec3 mixedColor = mix(texColor.xyz, colorVariation, 0.7f);
+	/* NOTE(jan): Vary texture-color. */
+	float variationNoiseValue = texture(noiseTexture, gridCoord).x;
+	vec3 noiseColor = mix(yellow, green, variationNoiseValue);
+	vec3 mixedColor = mix(outColor.xyz, noiseColor, 0.7f);
 
-	outColor = vec4(mixedColor.xyz, texColor.w);
+	outColor = vec4(mixedColor.xyz, outColor.w);
 }
