@@ -696,8 +696,8 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): The render passes and descriptor sets below start the
      * pipeline creation process. */
-    Pipeline pipeline = {};
-	Pipeline grassPipeline = {};
+    Pipeline grassPipeline = {};
+	Pipeline groundPipeline = {};
 
     /* NOTE(jan): Render pass. */
     VkRenderPass defaultRenderPass;
@@ -793,18 +793,18 @@ main (int argc, char** argv, char** envp) {
         defaultDescriptorSetLayout = vk.createDescriptorSetLayout(bindings);
     }
 
-	LOG(INFO) << "Creating billboard pipeline...";
+	LOG(INFO) << "Creating grass pipeline...";
     {
-        pipeline = vk.createPipeline<GridVertex>(
+        grassPipeline = vk.createPipeline<GridVertex>(
             "shaders/triangle",
             defaultRenderPass,
             defaultDescriptorSetLayout
         );
     }
 
-	LOG(INFO) << "Creating grass pipeline...";
+	LOG(INFO) << "Creating ground pipeline...";
     {
-        grassPipeline = vk.createPipeline<TextureVertex>(
+        groundPipeline = vk.createPipeline<TextureVertex>(
             "shaders/ground",
             defaultRenderPass,
             defaultDescriptorSetLayout
@@ -1053,7 +1053,7 @@ main (int argc, char** argv, char** envp) {
         vkCmdBindDescriptorSets(
             vk.swap.command_buffers[i],
             VK_PIPELINE_BIND_POINT_GRAPHICS,
-            pipeline.layout,
+            grassPipeline.layout,
             0, 1,
             &defaultDescriptorSet,
             0, nullptr
@@ -1063,7 +1063,7 @@ main (int argc, char** argv, char** envp) {
         vkCmdBindPipeline(
             vk.swap.command_buffers[i],
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-            grassPipeline.handle
+            groundPipeline.handle
         );
 		VkBuffer ground_vertex_buffers[] = { groundBuffer.buffer };
 		vkCmdBindVertexBuffers(
@@ -1079,7 +1079,7 @@ main (int argc, char** argv, char** envp) {
 
         vkCmdBindPipeline(
             vk.swap.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
-            pipeline.handle
+            grassPipeline.handle
         );
         VkBuffer vertex_buffers[] = {scene.vertices.buffer};
         vkCmdBindVertexBuffers(
@@ -1387,14 +1387,14 @@ main (int argc, char** argv, char** envp) {
     for (const auto& f: vk.swap.frames) {
         vkDestroyFramebuffer(vk.device, f, nullptr);
     }
-    vkDestroyPipeline(vk.device, pipeline.handle, nullptr);
-    vkDestroyPipelineLayout(vk.device, pipeline.layout, nullptr);
+    vkDestroyPipeline(vk.device, grassPipeline.handle, nullptr);
+    vkDestroyPipelineLayout(vk.device, grassPipeline.layout, nullptr);
     vkDestroyDescriptorSetLayout(
         vk.device, defaultDescriptorSetLayout, nullptr
     );
     vkDestroyRenderPass(vk.device, defaultRenderPass, nullptr);
-    vkDestroyPipeline(vk.device, grassPipeline.handle, nullptr);
-    vkDestroyPipelineLayout(vk.device, grassPipeline.layout, nullptr);
+    vkDestroyPipeline(vk.device, groundPipeline.handle, nullptr);
+    vkDestroyPipelineLayout(vk.device, groundPipeline.layout, nullptr);
     for (const auto& i: vk.swap.images) {
         vkDestroyImageView(vk.device, i.v, nullptr);
     }
