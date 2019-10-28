@@ -49,7 +49,7 @@ struct Scene {
     Buffer uniforms;
     Buffer vertices;
     MVP mvp;
-    Image texture;
+    Image grassTexture;
     Image groundTexture;
 	Image colour;
     Image depth;
@@ -846,7 +846,7 @@ main (int argc, char** argv, char** envp) {
         );
     }
 
-    scene.texture = vk.createTexture("grass.png");
+    scene.grassTexture = vk.createTexture("grass.png");
     scene.groundTexture = vk.createTexture("ground.png", true);
     scene.noise = vk.createTexture("noise.png");
 
@@ -960,8 +960,8 @@ main (int argc, char** argv, char** envp) {
         {
             VkDescriptorImageInfo i = {};
             i.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            i.imageView = scene.texture.v;
-            i.sampler = scene.texture.s;
+            i.imageView = scene.grassTexture.v;
+            i.sampler = scene.grassTexture.s;
             VkWriteDescriptorSet w = {};
             w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             w.dstSet = defaultDescriptorSet;
@@ -1360,16 +1360,16 @@ main (int argc, char** argv, char** envp) {
     vkDestroyImageView(vk.device, scene.depth.v, nullptr);
     vkFreeMemory(vk.device, scene.depth.m, nullptr);
     vkDestroyImage(vk.device, scene.depth.i, nullptr);
-    vkDestroySampler(vk.device, scene.texture.s, nullptr);
-    vkDestroyImageView(vk.device, scene.texture.v, nullptr);
-    vkDestroyImage(vk.device, scene.texture.i, nullptr);
+    vkDestroySampler(vk.device, scene.grassTexture.s, nullptr);
+    vkDestroyImageView(vk.device, scene.grassTexture.v, nullptr);
+    vkDestroyImage(vk.device, scene.grassTexture.i, nullptr);
     vkDestroySampler(vk.device, scene.groundTexture.s, nullptr);
     vkDestroyImageView(vk.device, scene.groundTexture.v, nullptr);
     vkDestroyImage(vk.device, scene.groundTexture.i, nullptr);
     vkDestroySampler(vk.device, scene.noise.s, nullptr);
     vkDestroyImageView(vk.device, scene.noise.v, nullptr);
     vkDestroyImage(vk.device, scene.noise.i, nullptr);
-    vkFreeMemory(vk.device, scene.texture.m, nullptr);
+    vkFreeMemory(vk.device, scene.grassTexture.m, nullptr);
     vkFreeMemory(vk.device, scene.groundTexture.m, nullptr);
     vkFreeMemory(vk.device, scene.noise.m, nullptr);
     vkFreeMemory(vk.device, scene.indices.memory, nullptr);
