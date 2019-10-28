@@ -781,7 +781,7 @@ main (int argc, char** argv, char** envp) {
             b.pImmutableSamplers = nullptr;
             bindings.push_back(b);
         }
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 3; i++) {
             VkDescriptorSetLayoutBinding b = {};
             b.binding = 1 + i;
             b.descriptorCount = 1;
