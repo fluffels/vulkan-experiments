@@ -777,16 +777,31 @@ main (int argc, char** argv, char** envp) {
             b.binding = 0;
             b.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             b.descriptorCount = 1;
-            b.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT;
+            b.stageFlags = (
+                VK_SHADER_STAGE_VERTEX_BIT |
+                VK_SHADER_STAGE_GEOMETRY_BIT
+            );
             b.pImmutableSamplers = nullptr;
             bindings.push_back(b);
         }
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 2; i++) {
             VkDescriptorSetLayoutBinding b = {};
             b.binding = 1 + i;
             b.descriptorCount = 1;
             b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+            b.pImmutableSamplers = nullptr;
+            bindings.push_back(b);
+        }
+        {
+            VkDescriptorSetLayoutBinding b = {};
+            b.binding = 3;
+            b.descriptorCount = 1;
+            b.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            b.stageFlags = (
+                VK_SHADER_STAGE_GEOMETRY_BIT |
+                VK_SHADER_STAGE_FRAGMENT_BIT
+            );
             b.pImmutableSamplers = nullptr;
             bindings.push_back(b);
         }
