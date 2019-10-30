@@ -165,7 +165,7 @@ main (int argc, char** argv, char** envp) {
 
     LOG(INFO) << "Generating model...";
 	const int extent = 100;
-	const float density = 0.5;
+	const float density = 1.5;
 	const int count = static_cast<int>(extent * density);
     WangTiling wangTiling(count, count);
     {

@@ -22,7 +22,7 @@ void main() {
 
 	/* NOTE(jan): Discard fully transparent fragments so transparency is
 	order-independent. */
-	if (outColor.w < 0.1) { discard; }
+	if (outColor.w < 0.85) { discard; }
 
 	/* NOTE(jan): Dissolve effect prevents popping. */
 	float dissolveNoiseValue = texture(noiseTexture, textureCoord).x;

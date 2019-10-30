@@ -23,8 +23,8 @@ void main() {
 
 	const vec2 GRID_COORD = vec2(inPos.x, inPos.z) / 100.f;
 	const float NOISE_OFFSET = texture(noiseTexture, GRID_COORD).x - 0.5f;
-	inPos.x = inPos.x + 4 * NOISE_OFFSET;
-	inPos.z = inPos.z - 4 * NOISE_OFFSET;
+	inPos.x = inPos.x + NOISE_OFFSET;
+	inPos.z = inPos.z - NOISE_OFFSET;
    
 	vec4 ORIGIN = u.view * u.model * inPos;
 	const float DISTANCE_FROM_CAMERA = (
