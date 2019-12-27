@@ -371,7 +371,7 @@ public:
     ) {
         VkDescriptorSetLayoutCreateInfo i = {};
         i.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        i.bindingCount = bindings.size();
+        i.bindingCount = static_cast<uint32_t>(bindings.size());
         i.pBindings = bindings.data();
         VkDescriptorSetLayout result;
         VkResult code = vkCreateDescriptorSetLayout(
@@ -385,7 +385,7 @@ public:
     createDescriptorPool(const std::vector<VkDescriptorPoolSize>& size) {
         VkDescriptorPoolCreateInfo i = {};
         i.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        i.poolSizeCount = size.size();
+        i.poolSizeCount = static_cast<uint32_t>(size.size());
         i.pPoolSizes = size.data();
         i.maxSets = 1;
         VkDescriptorPool result;
@@ -400,7 +400,7 @@ public:
         VkDescriptorSetAllocateInfo i = {};
         i.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         i.descriptorPool = pool;
-        i.descriptorSetCount = layouts.size();
+        i.descriptorSetCount = static_cast<uint32_t>(layouts.size());
         i.pSetLayouts = layouts.data();
         VkDescriptorSet result;
         VkResult code = vkAllocateDescriptorSets(this->device, &i, &result);
@@ -491,7 +491,8 @@ public:
         int depth;
         auto bytes = readFile(imagePath);
         stbi_uc* pixels = stbi_load_from_memory(
-            reinterpret_cast<const stbi_uc*>(bytes.data()), bytes.size(),
+            reinterpret_cast<const stbi_uc*>(bytes.data()),
+            static_cast<int>(bytes.size()),
             &width, &height, &depth,
             STBI_rgb_alpha
         );
@@ -649,7 +650,9 @@ public:
             VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertexInput.vertexBindingDescriptionCount = 1;
         vertexInput.pVertexBindingDescriptions = &bindingDescription;
-        vertexInput.vertexAttributeDescriptionCount = attributeDescriptions.size();
+        vertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(
+            attributeDescriptions.size()
+        );
         vertexInput.pVertexAttributeDescriptions = attributeDescriptions.data();
 
         VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
@@ -755,7 +758,7 @@ public:
         VkGraphicsPipelineCreateInfo pipeline = {};
         pipeline.sType =
                 VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipeline.stageCount = stages.size();
+        pipeline.stageCount = static_cast<uint32_t>(stages.size());
         pipeline.pStages = stages.data();
         pipeline.pVertexInputState = &vertexInput;
         pipeline.pInputAssemblyState = &inputAssembly;
