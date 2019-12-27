@@ -76,7 +76,7 @@ const int WINDOW_WIDTH = 1800;
 INITIALIZE_EASYLOGGINGPP
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
-debug_callback(VkDebugReportFlagsEXT flags,
+debugCallback(VkDebugReportFlagsEXT flags,
                VkDebugReportObjectTypeEXT objType,
                uint64_t obj,
                size_t location,
@@ -319,7 +319,7 @@ main (int argc, char** argv, char** envp) {
         cf.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
                    VK_DEBUG_REPORT_WARNING_BIT_EXT |
                    VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-        cf.pfnCallback = debug_callback;
+        cf.pfnCallback = debugCallback;
         auto create =
             (PFN_vkCreateDebugReportCallbackEXT)
             vkGetInstanceProcAddr(vk.h, "vkCreateDebugReportCallbackEXT");
