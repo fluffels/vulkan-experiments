@@ -56,6 +56,7 @@ struct Scene {
     Image noise;
 };
 
+std::vector<TextureVertex> groundVertices;
 std::vector<uint32_t> indices;
 Buffer groundBuffer;
 auto eye = glm::vec3(50.0f, -2.0f, 50.0f);
@@ -773,7 +774,30 @@ main (int argc, char** argv, char** envp) {
     {
         LOG(INFO) << "Generating model...";
         std::vector<GridVertex> vertices;
-        const int extent = 100;
+        const int extent = 256;
+        eye.x = extent / 2;
+        eye.z = extent / 2;
+
+        /* TODO(jan): An indexed draw is more efficient here. */
+        for (int z = 0; z < extent; z++) {
+            for (int x = 0; x < extent; x++) {
+                TextureVertex v0, v1, v2, v3;
+                v0.pos = glm::vec3(x, 0.0f, z);
+                v0.tex = glm::vec2(0.0f, 0.0f);
+                v1.pos = glm::vec3(x + 1, 0.0f, z);
+                v1.tex = glm::vec2(1.0f, 0.0f);
+                v2.pos = glm::vec3(x, 0.0f, z + 1);
+                v2.tex = glm::vec2(0.0f, 1.0f);
+                v3.pos = glm::vec3(x + 1, 0.0f, z + 1);
+                v3.tex = glm::vec2(1.0f, 1.0f);
+                groundVertices.push_back(v0);
+                groundVertices.push_back(v1);
+                groundVertices.push_back(v2);
+                groundVertices.push_back(v3);
+            }
+        }
+        groundBuffer = vk.createVertexBuffer<TextureVertex>(groundVertices);
+
         const float density = 1.5;
         const int count = static_cast<int>(extent * density);
         WangTiling wangTiling(count, count);
@@ -795,23 +819,6 @@ main (int argc, char** argv, char** envp) {
             }
         }
         scene.vertices = vk.createVertexBuffer<GridVertex>(vertices);
-
-        std::vector<TextureVertex> groundVertices;
-        TextureVertex v0, v1, v2, v3;
-        const float maxCoord = (float)(extent + 1);
-        v0.pos = glm::vec3(-1.0f, 0.0f, -1.0f);
-        v0.tex = glm::vec2(0.0f, 0.0f);
-        v1.pos = glm::vec3(maxCoord, 0.0f, -1.0f);
-        v1.tex = glm::vec2(1.0f, 0.0f);
-        v2.pos = glm::vec3(-1.0f, 0.0f, maxCoord);
-        v2.tex = glm::vec2(0.0f, 1.0f);
-        v3.pos = glm::vec3(maxCoord, 0.0f, maxCoord);
-        v3.tex = glm::vec2(1.0f, 1.0f);
-        groundVertices.push_back(v0);
-        groundVertices.push_back(v1);
-        groundVertices.push_back(v2);
-        groundVertices.push_back(v3);
-        groundBuffer = vk.createVertexBuffer<TextureVertex>(groundVertices);
     }
 
     /* NOTE(jan): Index buffer. */
@@ -1057,7 +1064,8 @@ main (int argc, char** argv, char** envp) {
 			offsets
 		);
 		vkCmdDraw(
-			vk.swap.command_buffers[i], 4,
+			vk.swap.command_buffers[i],
+            static_cast<uint32_t>(groundVertices.size()),
 			1, 0, 0
 		);
 
