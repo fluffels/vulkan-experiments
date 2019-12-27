@@ -140,7 +140,7 @@ selectBestSupportedFormat(
 }
 
 VkFormat
-format_find_depth(VK& vk) {
+findDepthFormat(VK& vk) {
     auto candidates = {
         VK_FORMAT_D32_SFLOAT,
         VK_FORMAT_D32_SFLOAT_S8_UINT,
@@ -717,7 +717,7 @@ main (int argc, char** argv, char** envp) {
         descriptions[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         descriptions[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         descriptions[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        descriptions[1].format = format_find_depth(vk);
+        descriptions[1].format = findDepthFormat(vk);
         descriptions[1].samples = vk.sampleCount;
         descriptions[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         descriptions[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -891,7 +891,7 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Depth buffer. */
     {
-        auto format = format_find_depth(vk);
+        auto format = findDepthFormat(vk);
         scene.depth = vk.createImage(
             {vk.swap.extent.width, vk.swap.extent.height, 1},
 			vk.sampleCount,
