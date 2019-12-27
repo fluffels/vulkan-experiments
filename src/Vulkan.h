@@ -143,7 +143,7 @@ public:
 	VkSampleCountFlagBits sampleCount;
 
     VkFormat
-    selectBestSupportedFormat(
+    selectSupportedFormat(
         const std::vector<VkFormat>& candidates,
         VkImageTiling tiling,
         VkFormatFeatureFlags features
@@ -175,7 +175,7 @@ public:
         };
         auto tiling = VK_IMAGE_TILING_OPTIMAL;
         auto features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        return selectBestSupportedFormat(candidates, tiling, features);
+        return selectSupportedFormat(candidates, tiling, features);
     }
 
 	uint32_t
