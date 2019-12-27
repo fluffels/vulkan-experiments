@@ -172,9 +172,10 @@ public:
 
     bool
     formatHasStencil(VkFormat format) {
-        bool result;
-        result = (format == VK_FORMAT_D32_SFLOAT_S8_UINT);
-        result = result ||(format == VK_FORMAT_D24_UNORM_S8_UINT);
+        bool result = (
+            (format == VK_FORMAT_D32_SFLOAT_S8_UINT) ||
+            (format == VK_FORMAT_D24_UNORM_S8_UINT)
+        );
         return result;
     }
 
