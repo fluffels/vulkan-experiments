@@ -145,26 +145,29 @@ public:
 	uint32_t
     findMemoryType(const VkMemoryRequirements requirements,
                    const VkMemoryPropertyFlags properties) const {
-		VkPhysicalDeviceMemoryProperties pdmp;
-		vkGetPhysicalDeviceMemoryProperties(physical_device, &pdmp);
+		VkPhysicalDeviceMemoryProperties physicalProperties;
+		vkGetPhysicalDeviceMemoryProperties(
+            physical_device,
+            &physicalProperties
+        );
 
 		VkBool32 found = VK_FALSE;
-		uint32_t memory_type = 0;
+		uint32_t result = 0;
 		auto typeFilter = requirements.memoryTypeBits;
-		for (uint32_t i = 0; i < pdmp.memoryTypeCount; i++) {
-			auto& type = pdmp.memoryTypes[i];
-			auto check_type = typeFilter & (i << i);
-			auto check_flags = type.propertyFlags & properties;
-			if (check_type && check_flags) {
+		for (uint32_t i = 0; i < physicalProperties.memoryTypeCount; i++) {
+			auto& type = physicalProperties.memoryTypes[i];
+			auto checkType = typeFilter & (i << i);
+			auto checkFlags = type.propertyFlags & properties;
+			if (checkType && checkFlags) {
 				found = true;
-				memory_type = i;
+				result = i;
 				break;
 			}
 		}
 		if (!found) {
 			throw std::runtime_error("Suitable buffer memory not found");
 		}
-		return memory_type;
+		return result;
 	}
 
     bool
