@@ -1,5 +1,5 @@
 void
-vk_check_success(VkResult r,
+vkCheckSuccess(VkResult r,
                  const char *msg) {
     if (r != VK_SUCCESS) {
         throw(std::runtime_error(msg));
@@ -190,7 +190,7 @@ public:
         VkResult r = vkAllocateMemory(
             this->device, &i, nullptr, &result
         );
-        vk_check_success(r, "could not allocate memory");
+        vkCheckSuccess(r, "could not allocate memory");
         return result;
     }
 
@@ -317,7 +317,7 @@ public:
 			i.usage = usage;
 			i.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 			VkResult r = vkCreateBuffer(device, &i, nullptr, &result.buffer);
-			vk_check_success(r, "could not create buffer");
+			vkCheckSuccess(r, "could not create buffer");
 		}
 		VkMemoryRequirements memoryRequirements;
 		vkGetBufferMemoryRequirements(device, result.buffer, &memoryRequirements);
@@ -584,7 +584,7 @@ public:
             i.mipLodBias = 0.0f;
             i.minLod = 0.0f;
             i.maxLod = 0.0f;
-            vk_check_success(
+            vkCheckSuccess(
                 vkCreateSampler(this->device, &i, nullptr, &result.s),
                 "Could not create image sampler."
             );
@@ -601,7 +601,7 @@ public:
             i.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
             i.codeSize = code.size();
             i.pCode = reinterpret_cast<const uint32_t*>(code.data());
-            vk_check_success(
+            vkCheckSuccess(
                 vkCreateShaderModule(this->device, &i, nullptr, &result),
                 "Could not create shader module."
             );
@@ -735,7 +735,7 @@ public:
         layoutCreateInfo.pSetLayouts = &descriptorSetLayout;
         layoutCreateInfo.pushConstantRangeCount = 0;
         layoutCreateInfo.pPushConstantRanges = nullptr;
-        vk_check_success(
+        vkCheckSuccess(
             vkCreatePipelineLayout(
                 this->device, &layoutCreateInfo, nullptr, &result.layout
             ),
@@ -772,7 +772,7 @@ public:
         pipeline.basePipelineHandle = VK_NULL_HANDLE;
         pipeline.basePipelineIndex = -1;
 
-        vk_check_success(
+        vkCheckSuccess(
             vkCreateGraphicsPipelines(
                 this->device, VK_NULL_HANDLE, 1, &pipeline, nullptr,
                 &result.handle

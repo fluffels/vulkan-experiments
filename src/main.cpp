@@ -326,7 +326,7 @@ main (int argc, char** argv, char** envp) {
         if (create == nullptr) {
             LOG(WARNING) << "Could load debug callback creation function";
         } else {
-            vk_check_success(
+            vkCheckSuccess(
                 create(vk.h, &cf, nullptr, &callback_debug),
                 "Could not create debug callback"
             );
@@ -335,7 +335,7 @@ main (int argc, char** argv, char** envp) {
 #endif
 
     /* NOTE(jan): Create surface. */
-    vk_check_success(
+    vkCheckSuccess(
         glfwCreateWindowSurface(vk.h, window, nullptr, &vk.surface),
         "Could not create surface."
     );
@@ -534,7 +534,7 @@ main (int argc, char** argv, char** envp) {
         } else if (r == VK_ERROR_DEVICE_LOST) {
             throw std::runtime_error("Device lost.");
         }
-        vk_check_success(r, "Could not create physical device.");
+        vkCheckSuccess(r, "Could not create physical device.");
     }
 
     /* NOTE(jan): Device queues. */
@@ -655,7 +655,7 @@ main (int argc, char** argv, char** envp) {
             cf.queueFamilyIndexCount = 0;
             cf.pQueueFamilyIndices = nullptr;
         }
-        vk_check_success(
+        vkCheckSuccess(
             vkCreateSwapchainKHR(vk.device, &cf, nullptr, &vk.swap.h),
             "Could not create swap chain."
         );
@@ -688,7 +688,7 @@ main (int argc, char** argv, char** envp) {
         cf.subresourceRange.levelCount = 1;
         cf.subresourceRange.baseArrayLayer = 0;
         cf.subresourceRange.layerCount = 1;
-        vk_check_success(
+        vkCheckSuccess(
              vkCreateImageView(vk.device, &cf, nullptr, &vk.swap.images[i].v),
              "Could not create image view."
         );
@@ -763,7 +763,7 @@ main (int argc, char** argv, char** envp) {
         cf.dependencyCount = 1;
         cf.pDependencies = &dep;
 
-        vk_check_success(
+        vkCheckSuccess(
             vkCreateRenderPass(vk.device, &cf, nullptr, &defaultRenderPass),
             "Could not create render pass."
         );
@@ -833,7 +833,7 @@ main (int argc, char** argv, char** envp) {
         cf.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cf.queueFamilyIndex = vk.queues.graphics.family_index;
         cf.flags = 0;
-        vk_check_success(
+        vkCheckSuccess(
             vkCreateCommandPool(vk.device, &cf, nullptr, &vk.commandPool),
             "Could not create command pool."
         );
@@ -919,7 +919,7 @@ main (int argc, char** argv, char** envp) {
             cf.width = vk.swap.extent.width;
             cf.height = vk.swap.extent.height;
             cf.layers = 1;
-            vk_check_success(
+            vkCheckSuccess(
                 vkCreateFramebuffer(
                     vk.device, &cf, nullptr, &vk.swap.frames[i]
                 ),
@@ -1035,7 +1035,7 @@ main (int argc, char** argv, char** envp) {
         i.commandPool = vk.commandPool;
         i.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         i.commandBufferCount = (uint32_t)vk.swap.command_buffers.size();
-        vk_check_success(
+        vkCheckSuccess(
             vkAllocateCommandBuffers(vk.device, &i, vk.swap.command_buffers.data()),
             "Could not allocate command buffers."
         );
@@ -1108,7 +1108,7 @@ main (int argc, char** argv, char** envp) {
             1, 0, 0, 0
         );
         vkCmdEndRenderPass(vk.swap.command_buffers[i]);
-        vk_check_success(
+        vkCheckSuccess(
             vkEndCommandBuffer(vk.swap.command_buffers[i]),
             "Failed to record command buffer."
         );
