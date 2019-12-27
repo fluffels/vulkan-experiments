@@ -4,10 +4,11 @@ project (Vulkan)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 find_package(Vulkan REQUIRED)
+include_directories(${CMAKE_HOME_DIRECTORY}/include)
 include_directories(${glfw3_INCLUDE_DIRS})
 include_directories(${glm_INCLUDE_DIRS})
 include_directories(${Vulkan_INCLUDE_DIRS})
-add_executable (main main.cpp WangTiling.cpp WangTile.cpp)
+add_executable (main src/main.cpp src/WangTiling.cpp src/WangTile.cpp)
 target_link_libraries (main ${Vulkan_LIBRARIES} ${glfw3_LIBRARIES})
 set_target_properties(
     main
