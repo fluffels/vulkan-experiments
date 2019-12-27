@@ -76,14 +76,16 @@ const int WINDOW_WIDTH = 1800;
 INITIALIZE_EASYLOGGINGPP
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
-debugCallback(VkDebugReportFlagsEXT flags,
-               VkDebugReportObjectTypeEXT objType,
-               uint64_t obj,
-               size_t location,
-               int32_t code,
-               const char *layerPrefix,
-               const char *msg,
-               void *userData) {
+debugCallback(
+    VkDebugReportFlagsEXT flags,
+    VkDebugReportObjectTypeEXT objType,
+    uint64_t obj,
+    size_t location,
+    int32_t code,
+    const char *layerPrefix,
+    const char *msg,
+    void *userData
+) {
     if (flags == VK_DEBUG_REPORT_ERROR_BIT_EXT) {
         LOG(ERROR) << "[" << layerPrefix << "] " << msg;
     } else if (flags == VK_DEBUG_REPORT_WARNING_BIT_EXT) {
@@ -94,11 +96,13 @@ debugCallback(VkDebugReportFlagsEXT flags,
     return VK_FALSE;
 }
 
-void on_key_event(GLFWwindow* window,
-                  int key,
-                  int scancode,
-                  int action,
-                  int mods) {
+void onKeyEvent(
+    GLFWwindow* window,
+    int key,
+    int scancode,
+    int action,
+    int mods
+) {
     if (key == GLFW_KEY_ESCAPE) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     } else {
@@ -1156,7 +1160,7 @@ main (int argc, char** argv, char** envp) {
     float delta_f = 0.0f;
 
     LOG(INFO) << "Entering main loop...";
-    glfwSetKeyCallback(window, on_key_event);
+    glfwSetKeyCallback(window, onKeyEvent);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	if (glfwRawMouseMotionSupported()) {
 		LOG(INFO) << "Raw mouse motion is supported, enabling...";
