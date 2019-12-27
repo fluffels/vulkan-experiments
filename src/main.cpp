@@ -56,9 +56,7 @@ struct Scene {
     Image noise;
 };
 
-std::vector<GridVertex> vertices;
 std::vector<uint32_t> indices;
-std::vector<TextureVertex> groundVertices;
 Buffer groundBuffer;
 auto eye = glm::vec3(50.0f, -2.0f, 50.0f);
 auto at = glm::vec3(0.0f, -2.0f, 0.0f);
@@ -131,43 +129,6 @@ main (int argc, char** argv, char** envp) {
         }
         envp++;
     }
-
-    LOG(INFO) << "Generating model...";
-	const int extent = 100;
-	const float density = 1.5;
-	const int count = static_cast<int>(extent * density);
-    WangTiling wangTiling(count, count);
-    {
-        for (int z = 0; z < count; z++) {
-            for (int x = 0; x < count; x++) {
-                GridVertex vertex = {};
-                vertex.pos = {
-                    x * (1/(float)density),
-                    0.0f,
-                    z * (1/(float)density),
-                };
-                vertex.type = wangTiling.getTile(z, x).getID();
-                indices.push_back(
-                    static_cast<uint32_t>(vertices.size())
-                );
-                vertices.push_back(vertex);
-            }
-        }
-    }
-    TextureVertex v0, v1, v2, v3;
-    const float maxCoord = (float)(extent + 1);
-    v0.pos = glm::vec3(-1.0f, 0.0f, -1.0f);
-    v0.tex= glm::vec2(0.0f, 0.0f);
-	v1.pos = glm::vec3(maxCoord, 0.0f, -1.0f);
-    v1.tex= glm::vec2(1.0f, 0.0f);
-	v2.pos = glm::vec3(-1.0f, 0.0f, maxCoord);
-    v2.tex= glm::vec2(0.0f, 1.0f);
-	v3.pos = glm::vec3(maxCoord, 0.0f, maxCoord);
-    v3.tex= glm::vec2(1.0f, 1.0f);
-    groundVertices.push_back(v0);
-    groundVertices.push_back(v1);
-    groundVertices.push_back(v2);
-    groundVertices.push_back(v3);
 
     LOG(INFO) << "Initalizing GLFW...";
     if (!glfwInit()) {
@@ -810,7 +771,46 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Vertex buffers. */
     {
+        LOG(INFO) << "Generating model...";
+        std::vector<GridVertex> vertices;
+        const int extent = 100;
+        const float density = 1.5;
+        const int count = static_cast<int>(extent * density);
+        WangTiling wangTiling(count, count);
+        {
+            for (int z = 0; z < count; z++) {
+                for (int x = 0; x < count; x++) {
+                    GridVertex vertex = {};
+                    vertex.pos = {
+                        x * (1/(float)density),
+                        0.0f,
+                        z * (1/(float)density),
+                    };
+                    vertex.type = wangTiling.getTile(z, x).getID();
+                    indices.push_back(
+                        static_cast<uint32_t>(vertices.size())
+                    );
+                    vertices.push_back(vertex);
+                }
+            }
+        }
         scene.vertices = vk.createVertexBuffer<GridVertex>(vertices);
+
+        std::vector<TextureVertex> groundVertices;
+        TextureVertex v0, v1, v2, v3;
+        const float maxCoord = (float)(extent + 1);
+        v0.pos = glm::vec3(-1.0f, 0.0f, -1.0f);
+        v0.tex = glm::vec2(0.0f, 0.0f);
+        v1.pos = glm::vec3(maxCoord, 0.0f, -1.0f);
+        v1.tex = glm::vec2(1.0f, 0.0f);
+        v2.pos = glm::vec3(-1.0f, 0.0f, maxCoord);
+        v2.tex = glm::vec2(0.0f, 1.0f);
+        v3.pos = glm::vec3(maxCoord, 0.0f, maxCoord);
+        v3.tex = glm::vec2(1.0f, 1.0f);
+        groundVertices.push_back(v0);
+        groundVertices.push_back(v1);
+        groundVertices.push_back(v2);
+        groundVertices.push_back(v3);
         groundBuffer = vk.createVertexBuffer<TextureVertex>(groundVertices);
     }
 
