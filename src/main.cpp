@@ -112,44 +112,7 @@ void onKeyEvent(
             keyboard[key] = GLFW_RELEASE;
         }
     }
-}
-
-VkFormat
-selectBestSupportedFormat(
-    VK& vk,
-    const std::vector<VkFormat>& candidates,
-    VkImageTiling tiling,
-    VkFormatFeatureFlags features
-) {
-    for (VkFormat format: candidates) {
-        VkFormatProperties properties;
-        vkGetPhysicalDeviceFormatProperties(
-            vk.physical_device, format, &properties
-        );
-        VkFormatFeatureFlags available_features;
-        if (tiling == VK_IMAGE_TILING_LINEAR) {
-            available_features = properties.linearTilingFeatures;
-        } else if (tiling == VK_IMAGE_TILING_OPTIMAL) {
-            available_features = properties.optimalTilingFeatures;
-        }
-        if (available_features & features) {
-            return format;
-        }
     }
-    throw std::runtime_error("could not select an appropriate format");
-}
-
-VkFormat
-findDepthFormat(VK& vk) {
-    auto candidates = {
-        VK_FORMAT_D32_SFLOAT,
-        VK_FORMAT_D32_SFLOAT_S8_UINT,
-        VK_FORMAT_D24_UNORM_S8_UINT
-    };
-    auto tiling = VK_IMAGE_TILING_OPTIMAL;
-    auto features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    return selectBestSupportedFormat(vk, candidates, tiling, features);
-}
 
 int
 main (int argc, char** argv, char** envp) {
@@ -717,7 +680,7 @@ main (int argc, char** argv, char** envp) {
         descriptions[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         descriptions[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         descriptions[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        descriptions[1].format = findDepthFormat(vk);
+        descriptions[1].format = vk.findDepthFormat();
         descriptions[1].samples = vk.sampleCount;
         descriptions[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         descriptions[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -891,7 +854,7 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Depth buffer. */
     {
-        auto format = findDepthFormat(vk);
+        auto format = vk.findDepthFormat();
         scene.depth = vk.createImage(
             {vk.swap.extent.width, vk.swap.extent.height, 1},
 			vk.sampleCount,

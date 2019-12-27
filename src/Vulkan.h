@@ -142,6 +142,42 @@ public:
     SwapChain swap;
 	VkSampleCountFlagBits sampleCount;
 
+    VkFormat
+    selectBestSupportedFormat(
+        const std::vector<VkFormat>& candidates,
+        VkImageTiling tiling,
+        VkFormatFeatureFlags features
+    ) {
+        for (VkFormat format: candidates) {
+            VkFormatProperties properties;
+            vkGetPhysicalDeviceFormatProperties(
+                physical_device, format, &properties
+            );
+            VkFormatFeatureFlags available_features;
+            if (tiling == VK_IMAGE_TILING_LINEAR) {
+                available_features = properties.linearTilingFeatures;
+            } else if (tiling == VK_IMAGE_TILING_OPTIMAL) {
+                available_features = properties.optimalTilingFeatures;
+            }
+            if (available_features & features) {
+                return format;
+            }
+        }
+        throw std::runtime_error("could not select an appropriate format");
+    }
+
+    VkFormat
+    findDepthFormat() {
+        auto candidates = {
+            VK_FORMAT_D32_SFLOAT,
+            VK_FORMAT_D32_SFLOAT_S8_UINT,
+            VK_FORMAT_D24_UNORM_S8_UINT
+        };
+        auto tiling = VK_IMAGE_TILING_OPTIMAL;
+        auto features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        return selectBestSupportedFormat(candidates, tiling, features);
+    }
+
 	uint32_t
     findMemoryType(const VkMemoryRequirements requirements,
                    const VkMemoryPropertyFlags properties) const {
