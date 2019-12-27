@@ -115,10 +115,12 @@ void onKeyEvent(
 }
 
 VkFormat
-format_select_best_supported(VK& vk,
-                             const std::vector<VkFormat>& candidates,
-                             VkImageTiling tiling,
-                             VkFormatFeatureFlags features) {
+selectBestSupportedFormat(
+    VK& vk,
+    const std::vector<VkFormat>& candidates,
+    VkImageTiling tiling,
+    VkFormatFeatureFlags features
+) {
     for (VkFormat format: candidates) {
         VkFormatProperties properties;
         vkGetPhysicalDeviceFormatProperties(
@@ -146,7 +148,7 @@ format_find_depth(VK& vk) {
     };
     auto tiling = VK_IMAGE_TILING_OPTIMAL;
     auto features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    return format_select_best_supported(vk, candidates, tiling, features);
+    return selectBestSupportedFormat(vk, candidates, tiling, features);
 }
 
 int
