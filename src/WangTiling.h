@@ -9,7 +9,7 @@
 
 #include <glm/glm.hpp>
 
-#include "Constants.h"
+#include "lib/Constants.h"
 #include "WangTile.h"
 
 using namespace std;

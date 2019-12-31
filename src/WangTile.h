@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-#include "Constants.h"
+#include "lib/Constants.h"
 
 using glm::vec3;
 
