@@ -37,9 +37,9 @@ Terrain(string path) :
             desiredChannels
         );
         if (_heightMap != NULL) {
-            construct();
             _width = static_cast<unsigned>(width);
             _depth = static_cast<unsigned>(height);
+            construct();
         } else {
             const char* errorMessage = stbi_failure_reason();
             throw runtime_error(errorMessage);
@@ -80,7 +80,7 @@ operator=(Terrain &rhs) {
 }
 
 float Terrain::
-getHeight(unsigned x, unsigned z) {
+getHeightAt(unsigned x, unsigned z) {
     return getCoord(x, z)[Y];
 }
 
@@ -119,13 +119,13 @@ getHeightArray() {
 
 void Terrain::
 construct() {
-    _vertexCount =  _depth *  _depth;
+    _vertexCount =  _width * _depth;
 
     const unsigned SIZE = (unsigned) _vertexCount * COMPONENTS;
     _vertices = new float[SIZE];
     _normals = new float[SIZE];
 
-/* TODO(jan): this will be different if we actually compute a compact triangle list */
+/* TODO(jan): this might be different if we actually compute a compact triangle list */
     _indexCount = _width * _depth * 6;
     _indices = new unsigned[_indexCount];
 
@@ -145,7 +145,7 @@ getCoord(unsigned x, unsigned z) {
 float Terrain::
 getPixel(unsigned x, unsigned z) {
     const unsigned index = z * _width + x;
-    const char rawPixel = _heightMap[index];
+    const unsigned char rawPixel = _heightMap[index];
     const float normalizedPixel = rawPixel / 255.f;
     return normalizedPixel;
 }
@@ -161,7 +161,7 @@ generateVertices() {
     for (unsigned z = 0; z < _depth; z++) {
         Xcoord = 0.0f;
         for (unsigned x = 0; x < _width; x++) {
-            float height = getPixel(x, z) * (1/64.0f);
+            float height = getPixel(x, z) * 64.f;
             if (height > _maxHeight) _maxHeight = height;
             _vertices[index++] = Xcoord;
             _vertices[index++] = height;

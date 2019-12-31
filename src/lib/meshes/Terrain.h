@@ -32,19 +32,19 @@ public:
     Terrain(string path);
 
     /**
-      * Copy constructor, unimplemented.
+      * Copy constructor.
       */
     Terrain(const Terrain &rhs);
 
     /**
-      * Assignment operator, unimplemented.
+      * Assignment operator.
       */
     const Terrain &operator=(Terrain &rhs);
 
     /**
       * Get the height at the given heightmap coordinates.
       */
-    float getHeight(unsigned x, unsigned z);
+    float getHeightAt(unsigned x, unsigned z);
 
     /**
       * Get the height field as a one dimensional array.
