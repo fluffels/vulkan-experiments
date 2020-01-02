@@ -166,8 +166,8 @@ getPixel(unsigned x, unsigned z) {
 
 void Terrain::
 generateVertices() {
-    const float Z_DELTA = 10.0f;
-    const float X_DELTA = 10.0f;
+    const float Z_DELTA = 1.0f;
+    const float X_DELTA = 1.0f;
 
     unsigned index = 0;
     float Zcoord = 0.0f;

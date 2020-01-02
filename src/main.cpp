@@ -62,6 +62,7 @@ std::vector<TerrainVertex> groundVertices;
 std::vector<uint32_t> indices;
 Buffer groundBuffer;
 Buffer groundIndexBuffer;
+std::vector<uint32_t> groundIndexVector;
 auto eye = glm::vec3(50.0f, -2.0f, 50.0f);
 auto at = glm::vec3(0.0f, -2.0f, 0.0f);
 auto up = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -803,7 +804,6 @@ main (int argc, char** argv, char** envp) {
         groundBuffer = vk.createVertexBuffer<TerrainVertex>(groundVertices);
 
         const unsigned* groundIndices = terrain.getIndices();
-        std::vector<uint32_t> groundIndexVector;
         groundIndexVector.resize(terrain.getIndexCount());
         groundIndexVector.assign(
             groundIndices,
@@ -1082,7 +1082,7 @@ main (int argc, char** argv, char** envp) {
         );
 		vkCmdDrawIndexed(
 			vk.swap.command_buffers[i],
-            static_cast<uint32_t>(groundVertices.size()),
+            static_cast<uint32_t>(groundIndexVector.size()),
 			1, 0, 0, 0
 		);
 
