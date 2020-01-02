@@ -3,6 +3,10 @@
 #include <string>
 
 #include <stb_image.h>
+
+#ifndef NOMINMAX
+# define NOMINMAX
+#endif
 #include <glm/glm.hpp>
 
 #include "easylogging++.h"
@@ -62,14 +66,29 @@ public:
     float getMaxHeight() const;
 
     /**
-     * Get the width of the terrain.
+     * Get the width of the heightmap.
      */
-    float getWidth() const;
+    unsigned getWidth() const;
 
     /**
-     * Get the depth of the terrain.
+     * Get the depth of the heightmap.
      */
-    float getDepth() const;
+    unsigned getDepth() const;
+
+    /**
+     * Get a pointer to the positions.
+     */
+    const float* getPositions() const;
+
+    /**
+     * Get a pointer to the normals.
+     */
+    const float* getNormals() const;
+
+    /**
+     * Get a pointer to the indices.
+     */
+    virtual const unsigned* getIndices() const;
 
 private:
     /** How many components each vertex has. Set to 3 for 3d. */

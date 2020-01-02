@@ -57,15 +57,16 @@ struct GridVertex: public Vertex {
     }
 };
 
-struct TextureVertex: public Vertex {
+struct TerrainVertex: public Vertex {
     glm::vec3 pos;
+    glm::vec3 normal;
     glm::vec2 tex;
 
     static VkVertexInputBindingDescription
     getInputBindingDescription() {
         VkVertexInputBindingDescription i = {};
         i.binding = 0;
-        i.stride = sizeof(TextureVertex);
+        i.stride = sizeof(TerrainVertex);
         i.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         return i;
     }
@@ -76,11 +77,15 @@ struct TextureVertex: public Vertex {
         i[0].binding = 0;
         i[0].location = 0;
         i[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-        i[0].offset = offsetof(TextureVertex, pos);
+        i[0].offset = offsetof(TerrainVertex, pos);
+        i[0].binding = 0;
+        i[0].location = 1;
+        i[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        i[0].offset = offsetof(TerrainVertex, normal);
         i[1].binding = 0;
-        i[1].location = 1;
+        i[1].location = 2;
         i[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        i[1].offset = offsetof(TextureVertex, tex);
+        i[1].offset = offsetof(TerrainVertex, tex);
         return i;
     }
 };
@@ -698,7 +703,7 @@ public:
         VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
         inputAssembly.sType =
                 VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
         VkViewport viewport = {};

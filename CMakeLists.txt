@@ -19,6 +19,9 @@ add_executable (
 add_executable (
         main
         src/main.cpp
+        src/lib/meshes/Mesh.cpp
+        src/lib/meshes/IndexedMesh.cpp
+        src/lib/meshes/Terrain.cpp
         src/WangTiling.cpp
         src/WangTile.cpp
 )

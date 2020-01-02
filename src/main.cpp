@@ -8,15 +8,17 @@
 #include <string>
 #include <vector>
 
-#ifndef NOMINMAX
-# define NOMINMAX
-#endif
+#include "lib/meshes/Terrain.h"
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/gtc/matrix_transform.hpp>
+#ifndef NOMINMAX
+# define NOMINMAX
+#endif
 #include <glm/glm.hpp>
 
 #include "easylogging++.h"
@@ -56,9 +58,10 @@ struct Scene {
     Image noise;
 };
 
-std::vector<TextureVertex> groundVertices;
+std::vector<TerrainVertex> groundVertices;
 std::vector<uint32_t> indices;
 Buffer groundBuffer;
+Buffer groundIndexBuffer;
 auto eye = glm::vec3(50.0f, -2.0f, 50.0f);
 auto at = glm::vec3(0.0f, -2.0f, 0.0f);
 auto up = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -750,7 +753,7 @@ main (int argc, char** argv, char** envp) {
 
 	LOG(INFO) << "Creating ground pipeline...";
     {
-        groundPipeline = vk.createPipeline<TextureVertex>(
+        groundPipeline = vk.createPipeline<TerrainVertex>(
             "shaders/ground",
             defaultRenderPass,
             defaultDescriptorSetLayout
@@ -772,31 +775,41 @@ main (int argc, char** argv, char** envp) {
 
     /* NOTE(jan): Vertex buffers. */
     {
-        LOG(INFO) << "Generating model...";
-        std::vector<GridVertex> vertices;
-        const int extent = 256;
-        eye.x = extent / 2;
-        eye.z = extent / 2;
+        Terrain terrain("noise.png");
 
-        /* TODO(jan): An indexed draw is more efficient here. */
-        for (int z = 0; z < extent; z++) {
-            for (int x = 0; x < extent; x++) {
-                TextureVertex v0, v1, v2, v3;
-                v0.pos = glm::vec3(x, 0.0f, z);
-                v0.tex = glm::vec2(0.0f, 0.0f);
-                v1.pos = glm::vec3(x + 1, 0.0f, z);
-                v1.tex = glm::vec2(1.0f, 0.0f);
-                v2.pos = glm::vec3(x, 0.0f, z + 1);
-                v2.tex = glm::vec2(0.0f, 1.0f);
-                v3.pos = glm::vec3(x + 1, 0.0f, z + 1);
-                v3.tex = glm::vec2(1.0f, 1.0f);
-                groundVertices.push_back(v0);
-                groundVertices.push_back(v1);
-                groundVertices.push_back(v2);
-                groundVertices.push_back(v3);
+        LOG(INFO) << "Generating model...";
+        const int extent = 256;
+        eye.x = 128;
+        eye.y = terrain.getHeightAt(128, 128) - 1.f;
+        eye.z = 128;
+
+        std::vector<GridVertex> vertices;
+        const float* positions = terrain.getPositions();
+        const float* normals = terrain.getNormals();
+        for (unsigned x = 0; x < terrain.getWidth(); x++) {
+            for (unsigned z = 0; z < terrain.getDepth(); z++) {
+                TerrainVertex v;
+                v.pos = glm::vec3(positions[0], positions[1], positions[2]);
+                v.normal = glm::vec3(normals[0], normals[1], normals[2]);
+                v.tex = glm::vec2(
+                    x / terrain.getWidth(),
+                    z / terrain.getDepth()
+                );
+                groundVertices.push_back(v);
+                positions += 3;
+                normals += 3;
             }
         }
-        groundBuffer = vk.createVertexBuffer<TextureVertex>(groundVertices);
+        groundBuffer = vk.createVertexBuffer<TerrainVertex>(groundVertices);
+
+        const unsigned* groundIndices = terrain.getIndices();
+        std::vector<uint32_t> groundIndexVector;
+        groundIndexVector.resize(terrain.getIndexCount());
+        groundIndexVector.assign(
+            groundIndices,
+            groundIndices + terrain.getIndexCount()
+        );
+        groundIndexBuffer = vk.createIndexBuffer(groundIndexVector);
 
         const float density = 1.5;
         const int count = static_cast<int>(extent * density);
@@ -1063,10 +1076,14 @@ main (int argc, char** argv, char** envp) {
 			ground_vertex_buffers,
 			offsets
 		);
-		vkCmdDraw(
+        vkCmdBindIndexBuffer(
+            vk.swap.command_buffers[i], groundIndexBuffer.buffer,
+            0, VK_INDEX_TYPE_UINT32
+        );
+		vkCmdDrawIndexed(
 			vk.swap.command_buffers[i],
             static_cast<uint32_t>(groundVertices.size()),
-			1, 0, 0
+			1, 0, 0, 0
 		);
 
         vkCmdBindPipeline(

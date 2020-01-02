@@ -94,14 +94,14 @@ getMaxHeight() const {
     return _maxHeight;
 }
 
-float Terrain::
+unsigned Terrain::
 getWidth() const {
-    return _terrainWidth;
+    return _width;
 }
 
-float Terrain::
+unsigned Terrain::
 getDepth() const {
-    return _terrainDepth;
+    return _depth;
 }
 
 float *Terrain::
@@ -117,16 +117,30 @@ getHeightArray() {
     return result;
 }
 
+const float *Terrain::
+getPositions() const {
+    return _vertices;
+}
+
+const float *Terrain::
+getNormals() const {
+    return _normals;
+}
+
+const unsigned *Terrain::
+getIndices() const {
+    return _indices;
+}
+
 void Terrain::
 construct() {
-    _vertexCount =  _width * _depth;
+    _vertexCount = _width * _depth;
 
     const unsigned SIZE = (unsigned) _vertexCount * COMPONENTS;
     _vertices = new float[SIZE];
     _normals = new float[SIZE];
 
-/* TODO(jan): this might be different if we actually compute a compact triangle list */
-    _indexCount = _width * _depth * 6;
+    _indexCount = _vertexCount * 6;
     _indices = new unsigned[_indexCount];
 
     generateVertices();
