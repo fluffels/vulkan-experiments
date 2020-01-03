@@ -811,7 +811,7 @@ main (int argc, char** argv, char** envp) {
         );
         groundIndexBuffer = vk.createIndexBuffer(groundIndexVector);
 
-        const float density = 1.5;
+        const float density = 1.f;
         const int count = static_cast<int>(extent * density);
         WangTiling wangTiling(count, count);
         {
@@ -820,7 +820,7 @@ main (int argc, char** argv, char** envp) {
                     GridVertex vertex = {};
                     vertex.pos = {
                         x * (1/(float)density),
-                        0.0f,
+                        terrain.getHeightAt(x, z) + 0.2f,
                         z * (1/(float)density),
                     };
                     vertex.type = wangTiling.getTile(z, x).getID();
